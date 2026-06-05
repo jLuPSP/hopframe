@@ -43,7 +43,7 @@ flowchart LR
   <em>30 seconds. <code>make demo</code> boots the full stack and plays the attack story end-to-end.</em>
 </p>
 
-## What changes when you deploy this
+## What it does at the wire
 
 - **Poisoned tool descriptions get blocked at the wire**, before the agent's model ever reads them. The sensor inspects every `tools/list` response and quarantines tools whose descriptions carry instruction-override patterns.
 - **Cross-protocol leaks get caught.** An MCP tool returns sensitive data; the agent forwards it in an A2A task to an unallowlisted peer. Hopframe blocks the leak. No model-layer filter sees this; it spans two protocol hops.
@@ -51,7 +51,7 @@ flowchart LR
 - **Editable policies, hot-reloaded.** "Block tool poisoning on the github MCP for tenant acme; warn on prompt injection elsewhere." Author in the UI or `POST /v1/policies`, dry-run against the last 1000 events, sensors apply on the next heartbeat with no restart.
 - **Multi-tenant from day one.** Tokens are scope-bound to a tenant; reads filter, writes pin `event.tenant_id`. Same binary serves a homelab and a regulated tenant.
 
-## See it before you install it
+## What it looks like
 
 <p align="center">
   <a href="docs/screenshots/dashboard.png"><img src="docs/screenshots/dashboard.png" alt="Dashboard with events, blocked, warned, findings, sensor fleet, activity sparkline, top counterparties, recent blocks" width="780"></a>
@@ -114,15 +114,19 @@ Agents have other wires. The MCP tool description served by a server. The tool r
 
 Hopframe sits on those wires.
 
-## Compared to Bedrock Guardrails, Lakera, Model Armor &middot; Runlayer, Operant, Lasso
+The longer story, including the build decisions and an honest read of the landscape, is a case study: [Building Hopframe](https://jlu.dev/blog/building-hopframe/).
 
-**Different layer than the model-boundary players.** Bedrock Guardrails, Model Armor, Lakera Guard, NeMo Guardrails sit on the prompt-response channel. Hopframe sits one layer up on the protocol wire. **Stack them.** Most of the unique value is the protocol-layer surface a model-layer filter physically cannot see: tool poisoning at `tools/list`, cross-protocol taint, A2A drift, the audit chain.
+## Where it sits in the landscape
 
-**Different shape than the MCP gateway / agent security startups** that raised in 2025-2026 (Runlayer, Operant AI, Lasso Security, Solo.io agentgateway, IBM ContextForge, Cisco DefenseClaw, Invariant Labs / Snyk agent-scan). Of nine detection / audit surfaces Hopframe ships, **three have no published peer at all**: cross-protocol taint (MCP→A2A), A2A task drift, and MCP+A2A correlation on a single forensic timeline. Cryptographic audit (hash chain + Ed25519 + Sigstore Rekor) has one published peer — ArkForge — but it's SaaS-only, audit-only, and MCP-only; Hopframe ships detection and audit together, in your environment, with no per-call cost.
+I researched this honestly rather than asserting it. The cited write-up is in [docs/landscape-research.md](docs/landscape-research.md); the full matrix is in [docs/compare.md](docs/compare.md). The short version, as of mid-2026:
 
-**Open and free where the SaaS players aren't.** Runlayer, Operant AI, and ArkForge are closed SaaS — your protocol traffic crosses their cloud and you cannot read the detection logic they apply to it. Lasso's "open-source" gateway POSTs traffic to `server.lasso.security` for classification, so the actual detection is closed and paid. Snyk's agent-scan is hybrid (local proxy + Snyk Evo SaaS reporting tier). Hopframe is **BSL 1.1 source-available today, Apache 2.0 in three years, with detection rules and benchmark corpus Apache 2.0 right now** — every rule readable, every detector running locally, fork-friendly. The only restriction is "no competing managed service," and that lifts on the Change Date. Solo.io agentgateway, Cisco DefenseClaw, and IBM ContextForge are also OSS, but ship less detection in-tree (gateway / admission-time scan rather than the inline four-layer pipeline + signed audit).
+The agent-security space sorts into four layers: model-boundary guardrails on the prompt/response channel (Bedrock Guardrails, Model Armor, Lakera, NeMo), MCP/agent gateways doing admission and routing, inline protocol-wire inspection, and audit/provenance. Hopframe lives in the last two together, and that combination is where it is actually differentiated. The model-boundary tools are a different layer; you stack them, you do not replace them.
 
-Full capability matrix and longer Q&A in [docs/compare.md](docs/compare.md).
+**The closest peer is [Solo.io's agentgateway](https://www.solo.io/products/agentgateway).** It is a credible, open-source (Apache 2.0, Linux Foundation) proxy that, like Hopframe, sits inline on both MCP and A2A with no code changes, and it does inspect MCP tool calls beyond the prompt: tool-server fingerprinting, versioning, and runtime policy against poisoning and rug-pulls. If you want this with a vendor and a roadmap behind it, look there first. Where Hopframe differs: detection is a four-stage content pipeline (regex, heuristic classifier, LLM judge, behavioral) rather than gateway policy; its guardrails run on the protocol content, not only the model boundary; and it ships a tamper-evident audit log (hash chain + Ed25519 + Sigstore Rekor) that agentgateway's "verifiable audit trail" claim did not hold up under checking.
+
+**What I could not find a peer for, in any tool I surveyed:** cross-protocol data taint (an MCP tool result leaking into an A2A task), A2A task-state or counterparty drift mid-task, and a unified MCP+A2A forensic timeline. That is "as far as I looked," not a proof of absence. The 2025-2026 startup wave (Runlayer, Operant AI, Lasso, Cisco AI Defense, and others) moves fast, and several went unverified in my research.
+
+**The threat model is not speculative anymore.** Since I started this, OWASP shipped a [Top 10 for Agentic Applications (2026)](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/) whose ASI07 names insecure inter-agent (A2A and MCP) communication, and an [MCP Top 10](https://owasp.org/www-project-mcp-top-10/) that calls out tool poisoning (MCP03) and lack of audit and telemetry (MCP08), recommending the same SHA-256-hashed, append-only audit Hopframe implements. The wires were the gap; the field now agrees they are the gap.
 
 ## Concretely, what gets caught
 
@@ -138,15 +142,14 @@ Full capability list: [docs/capabilities.md](docs/capabilities.md).
 
 ## Status
 
-Alpha. Honest about it.
+Alpha, and I would rather say so.
 
-- 22 Go packages tested under `-race`, 15 Python tests, 14 TypeScript tests, all green on every commit.
-- Single-process control plane today. Postgres-backed HA is in [`docs/roadmap.md`](docs/roadmap.md) Phase 2C.
-- Detection corpus is small (84 samples, F1 = 1.0). Treat as a floor; real-world traffic will surface gaps.
-- Good for: design-partner pilots, internal evaluation, homelab and small-team production, anywhere you want pre-flight evidence on agent traffic.
-- Not yet ready for: regulated workloads without your own validation, multi-region active-active, anything requiring a SOC 2 attestation.
+- 22 Go packages tested under `-race`, 15 Python tests, 14 TypeScript tests, green on every commit.
+- Single-process control plane today. Postgres-backed HA is sketched in [`docs/roadmap.md`](docs/roadmap.md).
+- The detection corpus is small (84 samples, F1 = 1.0, which mostly tells you the corpus is small). Treat it as a floor; real traffic will surface rules I have not written.
+- A good fit for evaluation, a homelab, a small team, or anywhere you want some evidence on agent traffic before you trust it. Not yet something to drop into a regulated workload without validating it yourself.
 
-If you deploy this somewhere real, **I want to hear what breaks.** Open an issue, or a [private security advisory](https://github.com/jLuPSP/hopframe/security/advisories/new) for security-sensitive reports. The fastest path from alpha to GA runs through the people who push it.
+If you run it somewhere real, I would genuinely like to know what broke. Open an issue, or a [private security advisory](https://github.com/jLuPSP/hopframe/security/advisories/new) for anything security-sensitive.
 
 ## Contributing
 
