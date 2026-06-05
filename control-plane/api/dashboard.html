@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Hopframe, dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0a0c10;
+    --bg-2: #0e1118;
+    --panel: #141821;
+    --panel-2: #1a1f2a;
+    --border: #232936;
+    --border-2: #2c3344;
+    --text: #e6e8ee;
+    --text-2: #a8aebd;
+    --muted: #6e7689;
+    --accent: #5aa8ff;
+    --accent-dim: rgba(90, 168, 255, 0.18);
+    --green: #4cd9a4;
+    --green-dim: rgba(76, 217, 164, 0.13);
+    --yellow: #f3c94f;
+    --yellow-dim: rgba(243, 201, 79, 0.12);
+    --red: #f0606b;
+    --red-dim: rgba(240, 96, 107, 0.13);
+    --orange: #f0884b;
+    --orange-dim: rgba(240, 136, 75, 0.12);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12.5px; }
+  header.topbar { height: 44px; padding: 0 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 18px; background: var(--bg-2); }
+  .brand { font-size: 13px; letter-spacing: 0.4px; font-weight: 600; }
+  .brand .h { color: var(--accent); }
+  .brand-meta { color: var(--muted); font-size: 11px; margin-left: 4px; }
+  .topbar .spacer { flex: 1; }
+  .topbar a { color: var(--text-2); text-decoration: none; font-size: 12px; padding: 4px 10px; border-radius: 4px; }
+  .topbar a:hover { background: var(--panel); color: var(--text); }
+  .topbar a.active { color: var(--accent); }
+  main { max-width: 1280px; margin: 0 auto; padding: 18px 16px 64px; }
+  h1 { font-size: 16px; margin: 0 0 14px; letter-spacing: 0.3px; }
+  h2 { font-size: 11px; margin: 0 0 10px; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; }
+  .grid { display: grid; gap: 14px; }
+  .stat-row { grid-template-columns: repeat(6, 1fr); margin-bottom: 14px; }
+  @media (max-width: 980px) { .stat-row { grid-template-columns: repeat(3, 1fr); } }
+  .charts-row { grid-template-columns: 2fr 1fr; margin-bottom: 14px; }
+  @media (max-width: 980px) { .charts-row { grid-template-columns: 1fr; } }
+  .lists-row { grid-template-columns: 1fr 1fr; margin-bottom: 14px; }
+  @media (max-width: 980px) { .lists-row { grid-template-columns: 1fr; } }
+
+  .stat { padding: 12px 14px; }
+  .stat .label { color: var(--muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .stat .value { font-size: 22px; font-weight: 500; margin-top: 5px; }
+  .stat .delta { font-size: 11px; color: var(--text-2); margin-top: 3px; }
+  .stat.green .value { color: var(--green); }
+  .stat.yellow .value { color: var(--yellow); }
+  .stat.red .value { color: var(--red); }
+  .stat.accent .value { color: var(--accent); }
+
+  .integrity { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px; border-radius: 999px; border: 1px solid; font-size: 11px; }
+  .integrity.ok { color: var(--green); border-color: var(--green); }
+  .integrity.bad { color: var(--red); border-color: var(--red); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; padding: 5px 8px; border-bottom: 1px solid var(--border); }
+  td { padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+
+  .pill { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 10.5px; border: 1px solid var(--border); color: var(--text-2); }
+  .pill.allow { color: var(--text-2); }
+  .pill.warn { color: var(--yellow); border-color: var(--yellow); }
+  .pill.block { color: var(--red); border-color: var(--red); }
+  .pill.crit { color: var(--red); border-color: var(--red); }
+  .pill.high { color: var(--orange); border-color: var(--orange); }
+
+  .barrow { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+  .barrow .label { font-size: 11.5px; color: var(--text-2); width: 130px; min-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .barrow .bar { flex: 1; height: 8px; border-radius: 999px; background: var(--border); overflow: hidden; position: relative; }
+  .barrow .fill { height: 100%; background: var(--accent); }
+  .barrow .num { width: 36px; text-align: right; font-size: 11.5px; color: var(--text); }
+
+  .legend { display: flex; gap: 10px; font-size: 10.5px; color: var(--muted); margin-top: 6px; }
+  .legend .dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+  .legend .a { background: var(--green); }
+  .legend .w { background: var(--yellow); }
+  .legend .b { background: var(--red); }
+
+  svg.chart { width: 100%; height: 200px; display: block; }
+  .empty { color: var(--muted); padding: 16px 0; font-size: 11.5px; text-align: center; }
+
+  .tag { display: inline-block; padding: 1px 7px; border-radius: 4px; background: var(--bg-2); border: 1px solid var(--border); color: var(--text-2); font-size: 10.5px; margin-right: 4px; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand"><span class="h">HOPFRAME</span><span class="brand-meta">overview</span></div>
+  <a href="/">live</a>
+  <a href="/dashboard" class="active">dashboard</a>
+  <a href="/policies">policies</a>
+  <a href="/sensors">sensors</a>
+  <a href="/records">records</a>
+  <a href="/rules">rules</a>
+  <a href="/audit">audit</a>
+  <a href="/settings">settings</a>
+  <span class="spacer"></span>
+  <span class="brand-meta" id="last-refresh">refreshing…</span>
+</header>
+
+<main>
+  <h1>Overview</h1>
+
+  <div class="grid stat-row" id="stats"></div>
+
+  <div class="grid charts-row">
+    <section>
+      <h2>Activity (last 5 minutes)</h2>
+      <svg class="chart" id="activityChart" viewBox="0 0 600 200" preserveAspectRatio="none"></svg>
+      <div class="legend">
+        <span><span class="dot a"></span>allow</span>
+        <span><span class="dot w"></span>warn</span>
+        <span><span class="dot b"></span>block</span>
+      </div>
+    </section>
+    <section>
+      <h2>Findings by category</h2>
+      <div id="categoryBars"></div>
+    </section>
+  </div>
+
+  <div class="grid lists-row">
+    <section>
+      <h2>Top counterparties by risk</h2>
+      <div id="counterparties"></div>
+    </section>
+    <section>
+      <h2>Top tools observed</h2>
+      <div id="tools"></div>
+    </section>
+  </div>
+
+  <div class="grid lists-row">
+    <section>
+      <h2>Recent blocks</h2>
+      <div id="recentBlocks"></div>
+    </section>
+    <section>
+      <h2>Sensor fleet</h2>
+      <div id="fleet"></div>
+    </section>
+  </div>
+</main>
+
+<script>
+  function escapeHTML(s) { return s == null ? "" : String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+  function authHeaders() {
+    const h = {};
+    const u = new URL(window.location.href);
+    const t = u.searchParams.get("token") || localStorage.getItem("hopframe.token") || "";
+    if (t) h["Authorization"] = "Bearer " + t;
+    return h;
+  }
+  async function getJSON(path) {
+    const r = await fetch(path, { headers: authHeaders(), credentials: "same-origin" });
+    if (r.status === 401) { window.location.href = "/login?next=" + encodeURIComponent(window.location.pathname); return null; }
+    if (!r.ok) return null;
+    return r.json();
+  }
+
+  function renderStats(metrics, stats, sensors, integrityOK) {
+    const el = document.getElementById("stats");
+    const m = metrics || {};
+    const total = m.total || 0;
+    const blocked = m.blocked || 0;
+    const warned = m.warned || 0;
+    const findings = m.findings || 0;
+    const fleetCount = (sensors || []).length;
+    el.innerHTML = `
+      <section class="stat"><div class="label">events / 5m</div><div class="value">${total}</div></section>
+      <section class="stat red"><div class="label">blocked</div><div class="value">${blocked}</div></section>
+      <section class="stat yellow"><div class="label">warned</div><div class="value">${warned}</div></section>
+      <section class="stat"><div class="label">findings</div><div class="value">${findings}</div></section>
+      <section class="stat accent"><div class="label">sensors</div><div class="value">${fleetCount}</div></section>
+      <section class="stat"><div class="label">chain head</div>
+        <div class="value">seq ${stats?.seq ?? "-"}</div>
+        <div class="delta">${integrityOK ? '<span class="integrity ok">integrity ok</span>' : '<span class="integrity bad">integrity broken</span>'}</div>
+      </section>
+    `;
+  }
+
+  function renderActivity(hist) {
+    const svg = document.getElementById("activityChart");
+    const allow = hist?.allow || [];
+    const warn  = hist?.warn  || [];
+    const block = hist?.block || [];
+    const cells = Math.max(allow.length, warn.length, block.length, 1);
+    const W = 600, H = 200;
+    const cw = W / cells;
+    let max = 0;
+    for (let i = 0; i < cells; i++) {
+      max = Math.max(max, (allow[i]||0) + (warn[i]||0) + (block[i]||0));
+    }
+    if (max < 4) max = 4;
+    let html = "";
+    for (let i = 0; i < cells; i++) {
+      const a = allow[i] || 0, w = warn[i] || 0, b = block[i] || 0;
+      const ah = (a / max) * H;
+      const wh = (w / max) * H;
+      const bh = (b / max) * H;
+      const x = i * cw + 1;
+      const bw = Math.max(cw - 2, 1);
+      let y = H;
+      // stack: allow bottom, warn middle, block top
+      if (ah > 0) { y -= ah; html += `<rect x="${x}" y="${y}" width="${bw}" height="${ah}" fill="var(--green)" opacity="0.85"/>`; }
+      if (wh > 0) { y -= wh; html += `<rect x="${x}" y="${y}" width="${bw}" height="${wh}" fill="var(--yellow)" opacity="0.85"/>`; }
+      if (bh > 0) { y -= bh; html += `<rect x="${x}" y="${y}" width="${bw}" height="${bh}" fill="var(--red)" opacity="0.95"/>`; }
+    }
+    // baseline
+    html += `<line x1="0" y1="${H-0.5}" x2="${W}" y2="${H-0.5}" stroke="var(--border)" stroke-width="1"/>`;
+    svg.innerHTML = html;
+  }
+
+  function renderCategoryBars(cats) {
+    const el = document.getElementById("categoryBars");
+    if (!cats || cats.length === 0) { el.innerHTML = `<div class="empty">No findings recorded yet.</div>`; return; }
+    const max = Math.max(...cats.map(c => c.count), 1);
+    const colorFor = (cat) => {
+      if (cat.includes("prompt")) return "var(--accent)";
+      if (cat.includes("tool-poison")) return "var(--red)";
+      if (cat.includes("credential") || cat.includes("exfil")) return "var(--orange)";
+      if (cat.includes("pii")) return "var(--yellow)";
+      return "var(--text-2)";
+    };
+    el.innerHTML = cats.map(c => {
+      const w = (c.count / max) * 100;
+      const col = colorFor(c.category || "");
+      return `<div class="barrow">
+        <div class="label">${escapeHTML(c.category || "(none)")}</div>
+        <div class="bar"><div class="fill" style="width: ${w}%; background: ${col}"></div></div>
+        <div class="num">${c.count}</div>
+      </div>`;
+    }).join("");
+  }
+
+  function renderCounterparties(rows) {
+    const el = document.getElementById("counterparties");
+    if (!rows || rows.length === 0) { el.innerHTML = `<div class="empty">No counterparties have triggered findings yet.</div>`; return; }
+    let html = '<table><thead><tr><th>Counterparty</th><th>Score</th><th>Findings</th><th>Last seen</th></tr></thead><tbody>';
+    for (const r of rows.slice(0, 8)) {
+      html += `<tr>
+        <td><b>${escapeHTML(r.counterparty || "-")}</b></td>
+        <td>${(r.score || 0).toFixed(2)}</td>
+        <td>${r.finding_count || r.findings || 0}</td>
+        <td><span class="brand-meta">${escapeHTML((r.last_seen || "-").slice(11, 19))}</span></td>
+      </tr>`;
+    }
+    html += "</tbody></table>";
+    el.innerHTML = html;
+  }
+
+  function renderTools(rows) {
+    const el = document.getElementById("tools");
+    if (!rows || rows.length === 0) { el.innerHTML = `<div class="empty">No tools observed yet.</div>`; return; }
+    let html = '<table><thead><tr><th>Tool</th><th>Calls</th><th>Findings</th><th>Score</th></tr></thead><tbody>';
+    for (const r of rows.slice(0, 8)) {
+      html += `<tr>
+        <td><b>${escapeHTML(r.tool || "-")}</b></td>
+        <td>${r.calls || 0}</td>
+        <td>${r.finding_count || 0}</td>
+        <td>${(r.score || 0).toFixed(2)}</td>
+      </tr>`;
+    }
+    html += "</tbody></table>";
+    el.innerHTML = html;
+  }
+
+  function renderRecentBlocks(records) {
+    const el = document.getElementById("recentBlocks");
+    if (!records || records.length === 0) { el.innerHTML = `<div class="empty">Nothing has been blocked recently.</div>`; return; }
+    let html = '<table><thead><tr><th>Seq</th><th>When</th><th>Method</th><th>Rule</th></tr></thead><tbody>';
+    for (const r of records.slice(0, 8)) {
+      const ev = r.event || {};
+      const f = (ev.findings || [])[0] || {};
+      html += `<tr>
+        <td><a href="/records?seq=${r.seq}" style="color:var(--accent);text-decoration:none">${r.seq}</a></td>
+        <td><span class="brand-meta">${escapeHTML((r.ingest_at || "").slice(11, 19))}</span></td>
+        <td>${escapeHTML(ev.message?.method || "-")}</td>
+        <td><span class="pill block">block</span> ${escapeHTML(f.rule_id || "-")}</td>
+      </tr>`;
+    }
+    html += "</tbody></table>";
+    el.innerHTML = html;
+  }
+
+  function renderFleet(sensors) {
+    const el = document.getElementById("fleet");
+    if (!sensors || sensors.length === 0) { el.innerHTML = `<div class="empty">No sensors heartbeating. Configure HOPFRAME_CONTROL_PLANE_URL on a sensor to enroll.</div>`; return; }
+    let html = '<table><thead><tr><th>Sensor</th><th>Tenant</th><th>Stale</th><th>Drift</th></tr></thead><tbody>';
+    for (const s of sensors) {
+      const drift = (s.policy_drift || s.content_drift) ? '<span class="pill warn">drift</span>' : '<span class="pill allow">in sync</span>';
+      html += `<tr>
+        <td><b>${escapeHTML(s.sensor_id)}</b></td>
+        <td>${escapeHTML(s.tenant_id || "-")}</td>
+        <td>${s.is_stale ? '<span class="pill block">stale '+s.stale_seconds+'s</span>' : '<span class="pill allow">'+s.stale_seconds+'s</span>'}</td>
+        <td>${drift}</td>
+      </tr>`;
+    }
+    html += "</tbody></table>";
+    el.innerHTML = html;
+  }
+
+  async function refresh() {
+    document.getElementById("last-refresh").textContent = "refreshing…";
+    const [stats, metrics, hist, cats, parties, tools, blocks, sensors, verify] = await Promise.all([
+      getJSON("/v1/stats"),
+      getJSON("/v1/metrics?window=5m&bucket=10s"),
+      getJSON("/v1/histogram?window=5m&bucket=10s"),
+      getJSON("/v1/analytics/categories"),
+      getJSON("/v1/analytics/counterparties?limit=8"),
+      getJSON("/v1/analytics/tools?limit=8"),
+      getJSON("/v1/events?action=block&limit=8"),
+      getJSON("/v1/sensors"),
+      getJSON("/v1/verify"),
+    ]);
+    const integrityOK = (verify && verify.ok === true);
+    renderStats(metrics, stats, sensors?.sensors, integrityOK);
+    renderActivity(hist);
+    renderCategoryBars(cats?.categories);
+    renderCounterparties(parties?.counterparties);
+    renderTools(tools?.tools);
+    renderRecentBlocks(blocks?.records);
+    renderFleet(sensors?.sensors);
+    document.getElementById("last-refresh").textContent = "updated " + new Date().toLocaleTimeString();
+  }
+
+  refresh();
+  setInterval(refresh, 5000);
+</script>
+</body>
+</html>

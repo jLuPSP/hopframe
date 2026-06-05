@@ -1,0 +1,79 @@
+category: tool-poisoning
+rules:
+  - id: tp.core.description_authority_claim
+    description: |
+      Tool description impersonates the system or claims privileged
+      authority to influence model behavior at registration time.
+    severity: critical
+    mode: block
+    targets:
+      - tools/list
+    fields:
+      - "result.tools.*.description"
+      - "result.tools.*.inputSchema.**"
+    patterns:
+      - '<\s*(?:system|admin|root)[^>]*>'
+      - '\[\[\s*(?:system|admin|developer)\s*\]\]'
+      - '(?:you must|always|never)\s+(?:bypass|ignore|override)\s+(?:safety|guardrails?|filters?)'
+
+  - id: tp.core.description_override
+    description: |
+      Tool description tries to relabel itself, override prior tool
+      semantics, or instruct the model to prefer it over other tools.
+    severity: high
+    mode: warn
+    targets:
+      - tools/list
+    fields:
+      - "result.tools.*.description"
+    patterns:
+      - 'this tool (?:replaces|supersedes|overrides|disables)\s+(?:all|the|every)\s+(?:other|prior|previous)\s+tools?'
+      - '(?:always|whenever possible)\s+(?:use|prefer|invoke)\s+this tool\s+(?:instead of|over|before)'
+      - '(?:before|after) (?:calling|invoking|using) any other tool[, ]+(?:always\s+)?(?:call|invoke)\s+this'
+
+  - id: tp.core.description_invisible_unicode
+    description: |
+      Tool description contains invisible Unicode (zero-width spaces,
+      tag block, bidi markers), a common smuggling technique.
+    severity: high
+    mode: block
+    targets:
+      - tools/list
+    fields:
+      - "result.tools.*.description"
+      - "result.tools.*.name"
+    case_sensitive: true
+    patterns:
+      - '[\x{E0000}-\x{E007F}]'
+      - '[\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2066}-\x{2069}]{2,}'
+
+  - id: tp.core.result_indirect_injection
+    description: |
+      Tool result smuggles attacker instructions back through the
+      model boundary (indirect prompt injection from tool output).
+    severity: high
+    mode: warn
+    targets:
+      - tools/call
+    directions:
+      - outbound
+    fields:
+      - "result.**"
+    patterns:
+      - '\[\[\s*(?:system|assistant|developer)\s*\]\][^[]{0,400}(?:ignore|disregard|forget|now)'
+      - '<\s*(?:system|admin|developer)[^>]*>[^<]{0,400}(?:ignore|disregard|override)'
+      - '(?:important|attention|note for the (?:assistant|model|ai))[, :]+(?:please\s+)?(?:ignore|disregard|do not|now)'
+
+  - id: tp.core.confused_deputy
+    description: |
+      Tool description encourages the model to act on behalf of a
+      different user, principal, or organization than the one in scope.
+    severity: high
+    mode: warn
+    targets:
+      - tools/list
+    fields:
+      - "result.tools.*.description"
+    patterns:
+      - '(?:on behalf of|as|impersonate)\s+(?:another|a different|the admin|the system) (?:user|principal|account|org|tenant)'
+      - 'switch (?:user|account|principal|tenant) to\s+\S+'

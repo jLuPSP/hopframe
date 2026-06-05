@@ -1,0 +1,26 @@
+sensor:
+  id: mcp-sensor-compose
+  tenant_id: dev
+
+upstream:
+  url: http://stub-mcp-server:8088
+  timeout: 30s
+
+listen:
+  address: ":7080"
+  base_path: /mcp
+
+rules:
+  dirs:
+    - /etc/hopframe/content
+
+emitter:
+  sink: http
+  url: http://control-plane:7090/v1/events
+  buffer_size: 2048
+  spool_path: /var/lib/hopframe-sensor/spool.ndjson
+  spool_max_bytes: 67108864
+  replay_interval: 5s
+
+policy:
+  fail_open: true

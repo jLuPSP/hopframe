@@ -1,0 +1,43 @@
+# Hopframe detection rule template.
+#
+# Copy this file into the appropriate content/<category>/ directory,
+# rename it, and edit the rule fields. See CONTRIBUTING.md for full
+# guidelines.
+#
+# RE2 caveats: no backreferences, no lookarounds. (?i) is implicit
+# unless case_sensitive: true.
+
+category: prompt-injection   # one of: prompt-injection, tool-poisoning,
+                             #         credential-exfiltration, pii-leakage,
+                             #         policy, tool-poisoning (a2a-card)
+
+rules:
+  - id: pi.contrib.example_rule_id
+    description: |
+      One- or two-line plain-English summary of what this rule
+      catches. Used as the human-readable description on findings.
+    severity: high             # info | low | medium | high | critical
+    mode: warn                 # monitor | warn | block
+
+    # Optional: limit the rule to specific protocol methods.
+    # Empty list means any method.
+    targets:
+      - tools/call
+
+    # Optional: limit to one direction. Empty list means both.
+    directions:
+      - inbound
+
+    # Glob-style paths over the inspectable field tree. Use ** for
+    # cross-segment match, * for within-segment.
+    fields:
+      - "params.**"
+      - "result.**"
+
+    # Defaults to false. When true, patterns are NOT wrapped with (?i).
+    case_sensitive: false
+
+    # Any pattern matching = one finding. Patterns are RE2-compatible.
+    patterns:
+      - 'first|alternative'
+      - 'second pattern'

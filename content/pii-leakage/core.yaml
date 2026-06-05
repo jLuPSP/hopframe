@@ -1,0 +1,112 @@
+category: pii-leakage
+rules:
+  - id: pl.core.ssn_us
+    description: |
+      US Social Security Number heuristic. RE2 has no negative
+      lookahead, so this is the broad form: any 3-2-4 digit
+      hyphenated number. Operators tune precision in their own pack.
+    severity: high
+    mode: warn
+    fields:
+      - "params.**"
+      - "result.**"
+    patterns:
+      - '\b\d{3}-\d{2}-\d{4}\b'
+
+  - id: pl.core.credit_card
+    description: 13- to 19-digit credit card heuristic.
+    severity: high
+    mode: warn
+    fields:
+      - "params.**"
+      - "result.**"
+    patterns:
+      - '\b(?:\d[ -]?){12,18}\d\b'
+
+  - id: pl.core.email_in_bulk
+    description: Bulk email lists in a single field (>=5 distinct emails).
+    severity: medium
+    mode: monitor
+    fields:
+      - "params.**"
+      - "result.**"
+    patterns:
+      - '(?:[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\s*[,;\s]\s*){4,}[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}'
+
+  - id: pl.core.us_phone
+    description: US phone number pattern.
+    severity: low
+    mode: monitor
+    fields:
+      - "params.**"
+      - "result.**"
+    patterns:
+      - '\b(?:\+?1[ \-.])?\(?[2-9]\d{2}\)?[ \-.]?\d{3}[ \-.]?\d{4}\b'
+
+  - id: pl.core.iban
+    description: IBAN bank account heuristic.
+    severity: medium
+    mode: warn
+    fields:
+      - "params.**"
+      - "result.**"
+    case_sensitive: true
+    patterns:
+      - '\b[A-Z]{2}\d{2}[A-Z0-9]{4,30}\b'
+
+  - id: pl.core.us_passport
+    description: US passport number heuristic (9 digits, often labeled).
+    severity: high
+    mode: warn
+    fields:
+      - "params.**"
+      - "result.**"
+    confidence: 0.65
+    patterns:
+      - 'passport[\s#:]*\b\d{9}\b'
+
+  - id: pl.core.driver_license_us
+    description: US driver license heuristic (state + alphanumeric).
+    severity: medium
+    mode: warn
+    fields:
+      - "params.**"
+      - "result.**"
+    confidence: 0.55
+    patterns:
+      - '(?:driver.?s?\s+licen[sc]e|DL[\s#:]*|license[\s#:]*number)[\s#:]*\b[A-Z0-9]{6,12}\b'
+
+  - id: pl.core.medicare_id
+    description: Medicare Beneficiary Identifier (MBI) format.
+    severity: high
+    mode: warn
+    fields:
+      - "params.**"
+      - "result.**"
+    case_sensitive: true
+    confidence: 0.8
+    patterns:
+      - '\b[1-9][AC-HJ-NP-RT-Y][AC-HJ-NP-RT-Y0-9]\d[AC-HJ-NP-RT-Y][AC-HJ-NP-RT-Y0-9]\d[AC-HJ-NP-RT-Y]{2}\d{2}\b'
+
+  - id: pl.core.uk_nino
+    description: UK National Insurance Number.
+    severity: high
+    mode: warn
+    fields:
+      - "params.**"
+      - "result.**"
+    case_sensitive: true
+    confidence: 0.85
+    patterns:
+      - '\b[A-CEGHJ-PR-TW-Z][A-CEGHJ-NPR-TW-Z]\d{6}[A-D]\b'
+
+  - id: pl.core.dob_with_pii
+    description: Date of birth alongside another PII identifier (heightens severity).
+    severity: medium
+    mode: monitor
+    fields:
+      - "params.**"
+      - "result.**"
+    confidence: 0.5
+    patterns:
+      - '(?:dob|date.?of.?birth|d\.o\.b\.)\s*[:=]\s*\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4}'

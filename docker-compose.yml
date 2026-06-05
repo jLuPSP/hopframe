@@ -1,0 +1,113 @@
+# docker-compose.yml: stupid-easy boot. No Go install needed.
+#
+#   docker compose up                                          # boot in front of your MCP (set UPSTREAM)
+#   UPSTREAM=http://your-mcp:8080 docker compose up            # in front of a real MCP server
+#   UPSTREAM=... A2A_UPSTREAM=http://your-a2a:8080 \           # plus an A2A peer
+#     docker compose --profile a2a up
+#
+#   docker compose --profile postgres up                       # use Postgres for the audit chain
+#   HOPFRAME_STORE_DSN=postgres://user:pass@your-cloud-sql:5432/hopframe?sslmode=require \
+#     docker compose up                                        # use a managed Postgres (Cloud SQL,
+#                                                              # AWS RDS, Azure, Aiven, Neon, ...)
+#
+# Once you're up, repoint your agent at http://127.0.0.1:7080/mcp
+# instead of UPSTREAM. Open http://127.0.0.1:7090 for the UI.
+#
+# Stop with `docker compose down`.
+#
+# By default this builds the image locally from the multi-stage
+# Dockerfile. Once v0.1.0 publishes, switch to the published image
+# by uncommenting the `image:` lines and removing the `build:` block.
+
+x-hopframe: &hopframe
+  build:
+    context: .
+    dockerfile: Dockerfile
+  # Uncomment to use the published image instead of building locally:
+  # image: ghcr.io/jlupsp/hopframe:0.1.0
+
+services:
+  control-plane:
+    <<: *hopframe
+    container_name: hopframe-control-plane
+    command:
+      - --addr=:7090
+      - --log=/var/lib/hopframe/events.ndjson
+      - --retention=24h
+    environment:
+      HOPFRAME_POLICY_PATH: /var/lib/hopframe/policies.json
+      HOPFRAME_SENSOR_FLEET: "1"
+      HOPFRAME_SIGNING_KEY: /var/lib/hopframe/signing.seed
+      HOPFRAME_CONTENT_ROOT: /etc/hopframe/content
+      # When set, the control plane uses Postgres for the audit chain
+      # instead of the local NDJSON file. Compatible with Cloud SQL,
+      # AWS RDS, Azure Database for PostgreSQL, Aiven, Neon, Supabase,
+      # or the bundled `postgres` profile below.
+      HOPFRAME_STORE_DSN: ${HOPFRAME_STORE_DSN:-}
+    ports:
+      - "7090:7090"
+    volumes:
+      - hopframe-data:/var/lib/hopframe
+
+  # Optional bundled Postgres for local testing of the Postgres
+  # backend. Activate with `docker compose --profile postgres up`.
+  # For real deployments, point HOPFRAME_STORE_DSN at your managed
+  # Postgres instead.
+  postgres:
+    profiles: [postgres]
+    image: postgres:16-alpine
+    container_name: hopframe-postgres
+    environment:
+      POSTGRES_USER: hopframe
+      POSTGRES_PASSWORD: hopframe-local
+      POSTGRES_DB: hopframe
+    ports:
+      - "5432:5432"
+    volumes:
+      - hopframe-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hopframe"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mcp-sensor:
+    <<: *hopframe
+    container_name: hopframe-mcp-sensor
+    entrypoint: ["/usr/local/bin/mcp-sensor"]
+    command:
+      - --config=/etc/hopframe/mcp-sensor.yaml
+    environment:
+      HOPFRAME_UPSTREAM_URL: ${UPSTREAM:-http://upstream-mcp:8080}
+      HOPFRAME_EMITTER_URL: http://control-plane:7090/v1/events
+    ports:
+      - "7080:7080"
+    volumes:
+      - ./examples/config/docker-mcp-sensor.yaml:/etc/hopframe/mcp-sensor.yaml:ro
+      - hopframe-spool:/var/lib/hopframe-sensor
+    depends_on:
+      - control-plane
+
+  a2a-sensor:
+    <<: *hopframe
+    container_name: hopframe-a2a-sensor
+    profiles: [a2a]
+    entrypoint: ["/usr/local/bin/a2a-sensor"]
+    command:
+      - --config=/etc/hopframe/a2a-sensor.yaml
+    environment:
+      HOPFRAME_UPSTREAM_URL: ${A2A_UPSTREAM:-http://upstream-a2a:8080}
+      HOPFRAME_EMITTER_URL: http://control-plane:7090/v1/events
+    ports:
+      - "7081:7081"
+    volumes:
+      - ./examples/config/docker-a2a-sensor.yaml:/etc/hopframe/a2a-sensor.yaml:ro
+      - hopframe-a2a-spool:/var/lib/hopframe-sensor
+    depends_on:
+      - control-plane
+
+volumes:
+  hopframe-data:
+  hopframe-spool:
+  hopframe-a2a-spool:
+  hopframe-postgres-data:

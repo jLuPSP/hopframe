@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Hopframe, policies</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0a0c10;
+    --bg-2: #0e1118;
+    --panel: #141821;
+    --panel-2: #1a1f2a;
+    --border: #232936;
+    --border-2: #2c3344;
+    --text: #e6e8ee;
+    --text-2: #a8aebd;
+    --muted: #6e7689;
+    --accent: #5aa8ff;
+    --accent-dim: rgba(90, 168, 255, 0.18);
+    --green: #4cd9a4;
+    --green-dim: rgba(76, 217, 164, 0.13);
+    --yellow: #f3c94f;
+    --yellow-dim: rgba(243, 201, 79, 0.12);
+    --red: #f0606b;
+    --red-dim: rgba(240, 96, 107, 0.13);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12.5px;
+  }
+  header.topbar {
+    height: 44px;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    background: var(--bg-2);
+  }
+  .brand { font-size: 13px; letter-spacing: 0.4px; font-weight: 600; }
+  .brand .h { color: var(--accent); }
+  .brand-meta { color: var(--muted); font-size: 11px; margin-left: 4px; }
+  .topbar .spacer { flex: 1; }
+  .topbar a { color: var(--text-2); text-decoration: none; font-size: 12px; padding: 4px 10px; border-radius: 4px; }
+  .topbar a:hover { background: var(--panel); color: var(--text); }
+  .topbar a.active { color: var(--accent); }
+  button.btn, input, select, textarea {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-family: inherit;
+    font-size: 12px;
+  }
+  button.btn { cursor: pointer; transition: border-color 120ms; }
+  button.btn:hover { border-color: var(--accent); }
+  button.btn.primary { border-color: var(--accent); color: var(--accent); }
+  button.btn.primary:hover { background: var(--accent-dim); }
+  button.btn.danger { border-color: var(--red); color: var(--red); }
+  button.btn.danger:hover { background: var(--red-dim); }
+  main { max-width: 1180px; margin: 0 auto; padding: 22px 16px 64px; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .lead { color: var(--text-2); margin: 0 0 22px; max-width: 800px; line-height: 1.55; }
+  .lead b { color: var(--text); font-weight: 500; }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; margin-bottom: 18px; }
+  h2 { font-size: 13px; margin: 0 0 12px; letter-spacing: 0.4px; text-transform: uppercase; color: var(--text-2); font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; padding: 6px 10px; border-bottom: 1px solid var(--border); }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:hover td { background: var(--panel-2); }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; border: 1px solid var(--border); color: var(--text-2); }
+  .pill.mode-block { color: var(--red); border-color: var(--red); }
+  .pill.mode-warn { color: var(--yellow); border-color: var(--yellow); }
+  .pill.mode-monitor { color: var(--text-2); }
+  .pill.disabled { color: var(--muted); border-color: var(--muted); }
+  .pill.enabled { color: var(--green); border-color: var(--green); }
+  .form-grid { display: grid; grid-template-columns: 140px 1fr 140px 1fr; gap: 10px 14px; align-items: center; }
+  .form-grid label { color: var(--text-2); font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .form-grid .full { grid-column: 2 / -1; }
+  .form-actions { margin-top: 16px; display: flex; gap: 10px; align-items: center; }
+  .preview-out { background: var(--bg-2); border: 1px solid var(--border); border-radius: 4px; padding: 10px 12px; font-size: 11.5px; color: var(--text-2); white-space: pre-wrap; min-height: 22px; }
+  .preview-out b { color: var(--text); }
+  .empty { color: var(--muted); padding: 20px; text-align: center; }
+  details { background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px; padding: 8px 12px; margin-bottom: 8px; }
+  details summary { cursor: pointer; color: var(--text-2); font-size: 11.5px; }
+  details[open] summary { color: var(--text); }
+  pre { margin: 6px 0 0; font-size: 11px; color: var(--text-2); white-space: pre-wrap; word-break: break-all; }
+  .toast { position: fixed; bottom: 16px; right: 16px; padding: 10px 14px; border-radius: 4px; background: var(--panel); border: 1px solid var(--border); font-size: 11.5px; max-width: 360px; }
+  .toast.err { border-color: var(--red); color: var(--red); }
+  .toast.ok { border-color: var(--green); color: var(--green); }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand"><span class="h">HOPFRAME</span><span class="brand-meta">policies · v0.1</span></div>
+  <a href="/">live</a>
+  <a href="/dashboard">dashboard</a>
+  <a href="/policies" class="active">policies</a>
+  <a href="/sensors">sensors</a>
+  <a href="/records">records</a>
+  <a href="/rules">rules</a>
+  <a href="/audit">audit</a>
+  <a href="/settings">settings</a>
+  <span class="spacer"></span>
+  <span class="brand-meta" id="version">version: -</span>
+</header>
+
+<main>
+  <h1>Policies</h1>
+  <p class="lead">
+    A <b>rule</b> matches; a <b>policy</b> disposes. Policies bind a scope (org default, tenant, sensor, or specific MCP server) plus a selector (which findings to act on) to a disposition (monitor, warn, or block). Most-specific scope wins; among ties, the strongest mode wins. Sensors hot-reload changes on their next heartbeat.
+  </p>
+
+  <section>
+    <h2>Active policies</h2>
+    <div id="policiesList"></div>
+  </section>
+
+  <section>
+    <h2>Create policy</h2>
+    <div class="form-grid" id="createForm">
+      <label>name</label><input class="full" id="f-name" placeholder="block tool poisoning on github MCP"/>
+      <label>description</label><input class="full" id="f-desc" placeholder="optional"/>
+
+      <label>tenant</label><input id="f-tenant" placeholder="empty matches all"/>
+      <label>sensor</label><input id="f-sensor" placeholder="empty matches all"/>
+
+      <label>server name</label><input id="f-server" placeholder="empty matches all"/>
+      <label>methods (csv)</label><input id="f-methods" placeholder='e.g. tools/list,tools/call'/>
+
+      <label>categories (csv)</label><input id="f-categories" placeholder='e.g. tool-poisoning,prompt-injection'/>
+      <label>min severity</label>
+      <select id="f-minSev">
+        <option value="">any</option>
+        <option>info</option>
+        <option>low</option>
+        <option>medium</option>
+        <option>high</option>
+        <option>critical</option>
+      </select>
+
+      <label>rule ids (csv)</label><input class="full" id="f-rules" placeholder='optional, restricts to listed rule ids'/>
+
+      <label>disposition</label>
+      <select id="f-mode">
+        <option value="monitor">monitor</option>
+        <option value="warn">warn</option>
+        <option value="block">block</option>
+      </select>
+      <label>enabled</label>
+      <select id="f-enabled">
+        <option value="true">enabled</option>
+        <option value="false">disabled</option>
+      </select>
+    </div>
+    <div class="form-actions">
+      <button class="btn primary" id="btn-create">Create</button>
+      <button class="btn" id="btn-preview">Preview against last 500 events</button>
+      <span class="brand-meta" id="form-msg"></span>
+    </div>
+    <div class="preview-out" id="preview-out" style="margin-top: 12px; display: none;"></div>
+  </section>
+</main>
+
+<div id="toast" class="toast" style="display: none;"></div>
+
+<script>
+  function token() {
+    const u = new URL(window.location.href);
+    return u.searchParams.get("token") || localStorage.getItem("hopframe.token") || "";
+  }
+  function authHeaders() {
+    const h = {"Content-Type": "application/json"};
+    const t = token();
+    if (t) h["Authorization"] = "Bearer " + t;
+    return h;
+  }
+
+  function toast(msg, kind) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.className = "toast " + (kind || "");
+    t.style.display = "block";
+    clearTimeout(t._h);
+    t._h = setTimeout(() => { t.style.display = "none"; }, 4000);
+  }
+
+  function csv(s) {
+    if (!s) return [];
+    return s.split(",").map(x => x.trim()).filter(x => x);
+  }
+
+  function asPill(text, cls) {
+    return `<span class="pill ${cls || ""}">${text}</span>`;
+  }
+
+  async function listPolicies() {
+    const r = await fetch("/v1/policies", {headers: authHeaders()});
+    const wrap = document.getElementById("policiesList");
+    if (!r.ok) {
+      wrap.innerHTML = `<div class="empty">control plane returned ${r.status}: ${await r.text()}</div>`;
+      return;
+    }
+    const body = await r.json();
+    document.getElementById("version").textContent = `version: ${body.version || 0}`;
+    const ps = body.policies || [];
+    if (ps.length === 0) {
+      wrap.innerHTML = `<div class="empty">
+        <div style="margin-bottom: 12px;">No policies configured yet.</div>
+        <button class="btn primary" id="loadSamplesBtn">Load 4 sample policies</button>
+      </div>`;
+      const btn = document.getElementById("loadSamplesBtn");
+      if (btn) btn.addEventListener("click", loadSamples);
+      return;
+    }
+    let html = '<table><thead><tr><th>Name</th><th>Scope</th><th>Selector</th><th>Mode</th><th>Status</th><th>Version</th><th></th></tr></thead><tbody>';
+    for (const p of ps) {
+      const scope = [
+        p.scope.tenant_id ? `tenant=${p.scope.tenant_id}` : null,
+        p.scope.sensor_id ? `sensor=${p.scope.sensor_id}` : null,
+        p.scope.server_name ? `server=${p.scope.server_name}` : null,
+      ].filter(Boolean).join(" / ") || asPill("org default");
+      const sel = [
+        (p.selector.categories || []).map(c => `cat=${c}`).join(","),
+        (p.selector.rule_ids || []).map(r => `rule=${r}`).join(","),
+        p.selector.min_severity ? `≥${p.selector.min_severity}` : "",
+        (p.selector.methods || []).map(m => `m=${m}`).join(","),
+      ].filter(x => x).join(" ") || "any";
+      html += `<tr>
+        <td><b>${escapeHTML(p.name)}</b><br/><span class="brand-meta">${escapeHTML(p.id)}</span></td>
+        <td>${scope}</td>
+        <td>${escapeHTML(sel)}</td>
+        <td>${asPill(p.disposition.mode, "mode-" + p.disposition.mode)}</td>
+        <td>${p.enabled ? asPill("enabled", "enabled") : asPill("disabled", "disabled")}</td>
+        <td>v${p.version}</td>
+        <td>
+          <button class="btn" data-act="toggle" data-id="${p.id}">${p.enabled ? "disable" : "enable"}</button>
+          <button class="btn" data-act="preview" data-id="${p.id}">preview</button>
+          <button class="btn danger" data-act="delete" data-id="${p.id}">delete</button>
+          <details style="margin-top:6px;"><summary>raw json</summary><pre>${escapeHTML(JSON.stringify(p, null, 2))}</pre></details>
+        </td>
+      </tr>`;
+    }
+    html += "</tbody></table>";
+    wrap.innerHTML = html;
+    wrap.querySelectorAll("button[data-act]").forEach(btn => {
+      btn.addEventListener("click", onAct);
+    });
+  }
+
+  function escapeHTML(s) {
+    if (s === undefined || s === null) return "";
+    return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+
+  async function onAct(ev) {
+    const id = ev.currentTarget.dataset.id;
+    const act = ev.currentTarget.dataset.act;
+    if (act === "delete") {
+      if (!confirm("Delete policy " + id + "?")) return;
+      const r = await fetch("/v1/policies/" + encodeURIComponent(id), {method: "DELETE", headers: authHeaders()});
+      if (r.ok) { toast("deleted", "ok"); listPolicies(); }
+      else toast("delete failed: " + r.status, "err");
+      return;
+    }
+    if (act === "toggle") {
+      const get = await fetch("/v1/policies/" + encodeURIComponent(id), {headers: authHeaders()});
+      if (!get.ok) { toast("get failed: " + get.status, "err"); return; }
+      const p = await get.json();
+      p.enabled = !p.enabled;
+      const r = await fetch("/v1/policies/" + encodeURIComponent(id), {method: "PATCH", headers: authHeaders(), body: JSON.stringify(p)});
+      if (r.ok) { toast(p.enabled ? "enabled" : "disabled", "ok"); listPolicies(); }
+      else toast("update failed: " + r.status, "err");
+      return;
+    }
+    if (act === "preview") {
+      const r = await fetch("/v1/policies/" + encodeURIComponent(id) + "/preview", {method: "POST", headers: authHeaders(), body: "{}"});
+      const out = document.getElementById("preview-out");
+      out.style.display = "block";
+      if (r.ok) {
+        const body = await r.json();
+        out.innerHTML = formatPreview(body);
+      } else {
+        out.textContent = "preview failed: " + r.status + " " + await r.text();
+      }
+    }
+  }
+
+  function formatPreview(b) {
+    const counts = b.would_dispose || {};
+    return `<b>preview against ${b.records_considered || 0} cached records</b><br/>` +
+      `would match: ${b.records_matched || 0}<br/>` +
+      `block: ${counts.block || 0} · warn: ${counts.warn || 0} · monitor: ${counts.monitor || 0} · none: ${counts.none || 0}`;
+  }
+
+  async function buildFormPolicy() {
+    return {
+      name: document.getElementById("f-name").value,
+      description: document.getElementById("f-desc").value,
+      enabled: document.getElementById("f-enabled").value === "true",
+      scope: {
+        tenant_id: document.getElementById("f-tenant").value || undefined,
+        sensor_id: document.getElementById("f-sensor").value || undefined,
+        server_name: document.getElementById("f-server").value || undefined,
+      },
+      selector: {
+        rule_ids: csv(document.getElementById("f-rules").value),
+        categories: csv(document.getElementById("f-categories").value),
+        min_severity: document.getElementById("f-minSev").value || undefined,
+        methods: csv(document.getElementById("f-methods").value),
+      },
+      disposition: {
+        mode: document.getElementById("f-mode").value,
+      },
+    };
+  }
+
+  async function onCreate() {
+    const p = await buildFormPolicy();
+    if (!p.name) { toast("name required", "err"); return; }
+    const r = await fetch("/v1/policies", {method: "POST", headers: authHeaders(), body: JSON.stringify(p)});
+    if (r.ok) {
+      const created = await r.json();
+      toast("created " + created.id, "ok");
+      document.getElementById("f-name").value = "";
+      document.getElementById("f-desc").value = "";
+      listPolicies();
+    } else {
+      toast("create failed: " + r.status + " " + await r.text(), "err");
+    }
+  }
+
+  async function onPreviewForm() {
+    const p = await buildFormPolicy();
+    if (!p.disposition.mode) { toast("disposition required", "err"); return; }
+    p.id = "preview-" + Date.now();
+    const r = await fetch("/v1/policies", {method: "POST", headers: authHeaders(), body: JSON.stringify({...p, enabled: false})});
+    if (!r.ok) {
+      // Fall back to in-memory preview by using a temp id via override:
+      toast("preview requires saving first; create with enabled=false to dry-run", "err");
+      return;
+    }
+    const created = await r.json();
+    const pr = await fetch("/v1/policies/" + encodeURIComponent(created.id) + "/preview", {method: "POST", headers: authHeaders(), body: "{}"});
+    const out = document.getElementById("preview-out");
+    out.style.display = "block";
+    if (pr.ok) out.innerHTML = formatPreview(await pr.json());
+    else out.textContent = "preview failed: " + pr.status;
+    // Clean up the temp policy.
+    await fetch("/v1/policies/" + encodeURIComponent(created.id), {method: "DELETE", headers: authHeaders()});
+    listPolicies();
+  }
+
+  async function loadSamples() {
+    const samples = [
+      {
+        name: "block-critical-everywhere",
+        description: "Org default: block any critical finding across all tenants.",
+        enabled: true,
+        scope: {},
+        selector: { min_severity: "critical" },
+        disposition: { mode: "block" },
+      },
+      {
+        name: "warn-prompt-injection-on-demo",
+        description: "Tenant policy: warn on high+ prompt injection on demo tenant.",
+        enabled: true,
+        scope: { tenant_id: "demo" },
+        selector: { categories: ["prompt-injection"], min_severity: "high" },
+        disposition: { mode: "warn" },
+      },
+      {
+        name: "block-tool-poisoning-on-demo",
+        description: "Tenant policy: block tool-poisoning findings on the demo tenant.",
+        enabled: true,
+        scope: { tenant_id: "demo" },
+        selector: { categories: ["tool-poisoning"] },
+        disposition: { mode: "block" },
+      },
+      {
+        name: "monitor-pii-leakage-on-demo",
+        description: "Tenant policy: log PII findings without blocking.",
+        enabled: true,
+        scope: { tenant_id: "demo" },
+        selector: { categories: ["pii-leakage"] },
+        disposition: { mode: "monitor" },
+      },
+    ];
+    let created = 0;
+    for (const p of samples) {
+      const r = await fetch("/v1/policies", {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify(p),
+      });
+      if (r.ok) created++;
+    }
+    toast(`created ${created} sample policies`, created === samples.length ? "ok" : "err");
+    listPolicies();
+  }
+
+  document.getElementById("btn-create").addEventListener("click", onCreate);
+  document.getElementById("btn-preview").addEventListener("click", onPreviewForm);
+  listPolicies();
+  setInterval(listPolicies, 15000);
+</script>
+</body>
+</html>

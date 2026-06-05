@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" width="1280" height="640" role="img" aria-label="Hopframe: security mesh for agent traffic">
+  <defs>
+    <style>
+      .mono  { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; }
+      .serif { font-family: Newsreader, "Source Serif Pro", Georgia, "Times New Roman", serif; }
+      .sans  { font-family: "Instrument Sans", "Inter Tight", Inter, -apple-system, "Helvetica Neue", Arial, sans-serif; }
+    </style>
+  </defs>
+
+  <rect width="1280" height="640" fill="#131211"/>
+  <rect x="0" y="0" width="480" height="640" fill="#0e0d0c"/>
+  <line x1="480" y1="0" x2="480" y2="640" stroke="#3a3732" stroke-width="1"/>
+
+  <!-- mark: frame + hop arc -->
+  <g transform="translate(100 200) scale(2.8)">
+    <rect x="22" y="22" width="56" height="56" fill="none" stroke="#f6f1ea" stroke-width="4"/>
+    <path d="M 10 62 Q 50 10 90 62" fill="none" stroke="#b8732e" stroke-width="3.25" stroke-linecap="round"/>
+    <circle cx="10" cy="62" r="3" fill="#b8732e"/>
+    <circle cx="90" cy="62" r="3" fill="#b8732e"/>
+  </g>
+
+  <text x="40" y="48"  class="mono" font-size="13" fill="#5a554c" letter-spacing="2.4" style="text-transform:uppercase">0.1.0</text>
+  <text x="40" y="612" class="mono" font-size="13" fill="#5a554c" letter-spacing="2.4" style="text-transform:uppercase">BSL 1.1</text>
+
+  <!-- right panel -->
+  <text x="560" y="140" class="mono"  font-size="13"  fill="#b8732e" letter-spacing="3" style="text-transform:uppercase">SECURITY MESH FOR AGENT TRAFFIC</text>
+  <text x="560" y="246" class="serif" font-size="100" font-weight="400" fill="#f6f1ea" letter-spacing="-3">hopframe</text>
+
+  <text x="560" y="312" class="sans" font-size="20" fill="#b8b1a3">
+    <tspan x="560" dy="0">Inline on every MCP and A2A wire. Catches the</tspan>
+    <tspan x="560" dy="28">protocol-layer attacks Bedrock, Lakera, and</tspan>
+    <tspan x="560" dy="28">Model Armor never see.</tspan>
+  </text>
+
+  <text x="560" y="430" class="serif" font-size="22" font-style="italic" fill="#f6f1ea">
+    <tspan x="560" dy="0">Hash-chained, signed audit</tspan>
+    <tspan x="560" dy="30">by default.</tspan>
+  </text>
+
+  <rect x="560" y="510" width="412" height="48" fill="#1c1b19" stroke="#3a3732" stroke-width="1"/>
+  <text x="578" y="541" class="mono" font-size="15">
+    <tspan fill="#5a554c">$ </tspan><tspan fill="#b8b1a3">make run </tspan><tspan fill="#b8732e">UPSTREAM</tspan><tspan fill="#5a554c">=</tspan><tspan fill="#b8b1a3">http://your-mcp:8080</tspan>
+  </text>
+</svg>

@@ -1,0 +1,58 @@
+version: "3.9"
+
+# Evaluation deployment:
+#   stub-mcp-server  → fake upstream MCP server
+#   mcp-sensor       → inline Hopframe sensor, forwards to stub
+#   control-plane    → ingest + UI on http://localhost:7090
+#
+# Send MCP JSON-RPC POSTs to http://localhost:7080 and watch the
+# control-plane UI for live events.
+
+services:
+  stub-mcp-server:
+    build:
+      context: ../..
+      dockerfile: deploy/docker-compose/Dockerfile.stub
+    ports:
+      - "8088:8088"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://localhost:8088/healthz"]
+      interval: 5s
+      timeout: 2s
+      retries: 5
+
+  control-plane:
+    build:
+      context: ../..
+      dockerfile: deploy/docker-compose/Dockerfile.control-plane
+    ports:
+      - "7090:7090"
+    volumes:
+      - control_plane_data:/var/lib/hopframe
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://localhost:7090/healthz"]
+      interval: 5s
+      timeout: 2s
+      retries: 5
+
+  mcp-sensor:
+    build:
+      context: ../..
+      dockerfile: deploy/docker-compose/Dockerfile.sensor
+    depends_on:
+      stub-mcp-server:
+        condition: service_healthy
+      control-plane:
+        condition: service_healthy
+    ports:
+      - "7080:7080"
+    environment:
+      HOPFRAME_CONFIG: /etc/hopframe/mcp-sensor.yaml
+    volumes:
+      - ./mcp-sensor.yaml:/etc/hopframe/mcp-sensor.yaml:ro
+      - ../../content:/etc/hopframe/content:ro
+      - sensor_spool:/var/lib/hopframe-sensor
+
+volumes:
+  control_plane_data:
+  sensor_spool:

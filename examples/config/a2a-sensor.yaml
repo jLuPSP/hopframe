@@ -1,0 +1,23 @@
+sensor:
+  id: a2a-sensor-dev
+  tenant_id: dev
+
+upstream:
+  url: http://127.0.0.1:8089
+  timeout: 30s
+
+listen:
+  address: ":7081"
+  base_path: /
+
+rules:
+  dirs:
+    - content
+  disabled_rules: []
+
+emitter:
+  sink: stdout
+  buffer_size: 2048
+
+policy:
+  fail_open: true

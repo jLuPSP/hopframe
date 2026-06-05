@@ -1,0 +1,30 @@
+# A2A sensor config for Docker. Same env-var override pattern as the
+# MCP sensor config; see docker-mcp-sensor.yaml.
+
+sensor:
+  id: hopframe-docker-a2a
+  tenant_id: default
+
+upstream:
+  url: http://upstream-a2a:8080
+  timeout: 30s
+
+listen:
+  address: ":7081"
+  base_path: /
+
+rules:
+  dirs:
+    - /etc/hopframe/content
+  disabled_rules: []
+
+emitter:
+  sink: http
+  url: http://control-plane:7090/v1/events
+  buffer_size: 2048
+  spool_path: /var/lib/hopframe-sensor/spool.ndjson
+  spool_max_bytes: 67108864
+  replay_interval: 5s
+
+policy:
+  fail_open: true

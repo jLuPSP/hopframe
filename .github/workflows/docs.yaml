@@ -1,0 +1,62 @@
+name: docs
+
+# Builds and deploys the MkDocs site to GitHub Pages.
+#
+# When the repo is private, Pages serves the site privately on GitHub
+# paid plans (Pro/Team/Enterprise). On the free tier with a private
+# repo, Pages is unavailable; flip the repo to public when ready or
+# run `mkdocs serve` locally.
+#
+# Trigger: push to main, plus a manual button. The build is fast
+# (~30s) so the trigger overhead does not matter.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'mkdocs.yml'
+      - '.github/workflows/docs.yaml'
+      - 'README.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: install mkdocs material
+        run: |
+          pip install --upgrade pip
+          pip install \
+            "mkdocs-material>=9.5" \
+            "pymdown-extensions>=10.7"
+      - name: build
+        run: mkdocs build --strict --site-dir _site
+      - name: upload pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

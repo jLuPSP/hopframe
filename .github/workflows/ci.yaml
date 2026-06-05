@@ -1,0 +1,111 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: hopframe
+          POSTGRES_DB: hopframe
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache: true
+
+      - name: go mod download
+        run: go mod download
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go build
+        run: go build ./...
+
+      - name: go test
+        env:
+          # Exercises the Postgres backend through the same suite as
+          # the file backend. Tests that don't need it skip cleanly
+          # via the HOPFRAME_TEST_POSTGRES gate.
+          HOPFRAME_TEST_POSTGRES: postgres://postgres:hopframe@localhost:5432/hopframe?sslmode=disable
+        run: go test -race -count=1 ./...
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "files need gofmt:"
+            echo "$unformatted"
+            exit 1
+          fi
+
+      - name: staticcheck
+        uses: dominikh/staticcheck-action@v1
+        with:
+          version: latest
+          install-go: false
+
+  python-sdk:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.9", "3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: install pytest
+        working-directory: sdk/python
+        run: python -m pip install --upgrade pip pytest
+
+      - name: pytest
+        working-directory: sdk/python
+        run: python -m pytest -q tests/
+
+  bench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache: true
+
+      - name: build hopframe-bench
+        run: go build -o bin/hopframe-bench ./cmd/hopframe-bench
+
+      - name: corpus precision/recall
+        run: ./bin/hopframe-bench --mode corpus --corpus bench/corpus/v1.jsonl
+
+      - name: latency budget
+        run: ./bin/hopframe-bench --mode latency --count 5000 --parallel 4

@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Hopframe, settings</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0a0c10;
+    --bg-2: #0e1118;
+    --panel: #141821;
+    --panel-2: #1a1f2a;
+    --border: #232936;
+    --text: #e6e8ee;
+    --text-2: #a8aebd;
+    --muted: #6e7689;
+    --accent: #5aa8ff;
+    --accent-dim: rgba(90, 168, 255, 0.18);
+    --green: #4cd9a4;
+    --green-dim: rgba(76, 217, 164, 0.13);
+    --yellow: #f3c94f;
+    --red: #f0606b;
+    --red-dim: rgba(240, 96, 107, 0.13);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12.5px; }
+  header.topbar { height: 44px; padding: 0 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 18px; background: var(--bg-2); }
+  .brand { font-size: 13px; letter-spacing: 0.4px; font-weight: 600; }
+  .brand .h { color: var(--accent); }
+  .brand-meta { color: var(--muted); font-size: 11px; margin-left: 4px; }
+  .topbar .spacer { flex: 1; }
+  .topbar a { color: var(--text-2); text-decoration: none; font-size: 12px; padding: 4px 10px; border-radius: 4px; }
+  .topbar a:hover { background: var(--panel); color: var(--text); }
+  .topbar a.active { color: var(--accent); }
+  .identity { color: var(--text-2); font-size: 11px; }
+  .identity b { color: var(--text); }
+  button.btn, input, select { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 6px 10px; font-family: inherit; font-size: 12px; }
+  button.btn { cursor: pointer; }
+  button.btn:hover { border-color: var(--accent); }
+  button.btn.primary { border-color: var(--accent); color: var(--accent); }
+  button.btn.primary:hover { background: var(--accent-dim); }
+  button.btn.danger { border-color: var(--red); color: var(--red); }
+  button.btn.danger:hover { background: var(--red-dim); }
+  main { max-width: 1180px; margin: 0 auto; padding: 22px 16px 64px; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .lead { color: var(--text-2); margin: 0 0 22px; max-width: 800px; line-height: 1.55; }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; margin-bottom: 18px; }
+  h2 { font-size: 13px; margin: 0 0 12px; letter-spacing: 0.4px; text-transform: uppercase; color: var(--text-2); font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; padding: 6px 10px; border-bottom: 1px solid var(--border); }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; border: 1px solid var(--border); color: var(--text-2); }
+  .pill.owner { color: var(--accent); border-color: var(--accent); }
+  .pill.admin { color: var(--green); border-color: var(--green); }
+  .pill.editor { color: var(--yellow); border-color: var(--yellow); }
+  .pill.viewer { color: var(--text-2); }
+  .form-grid { display: grid; grid-template-columns: 120px 1fr 120px 1fr; gap: 10px 14px; align-items: center; }
+  .form-grid label { color: var(--text-2); font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .empty { color: var(--muted); padding: 20px; text-align: center; }
+  .toast { position: fixed; bottom: 16px; right: 16px; padding: 10px 14px; border-radius: 4px; background: var(--panel); border: 1px solid var(--border); font-size: 11.5px; max-width: 480px; word-break: break-all; }
+  .toast.err { border-color: var(--red); color: var(--red); }
+  .toast.ok { border-color: var(--green); color: var(--green); }
+  .secret-reveal { background: var(--green-dim); border: 1px solid var(--green); border-radius: 4px; padding: 10px 12px; font-size: 11.5px; margin-top: 10px; word-break: break-all; }
+  .secret-reveal b { color: var(--green); display: block; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand"><span class="h">HOPFRAME</span><span class="brand-meta">settings</span></div>
+  <a href="/">live</a>
+  <a href="/dashboard">dashboard</a>
+  <a href="/policies">policies</a>
+  <a href="/sensors">sensors</a>
+  <a href="/records">records</a>
+  <a href="/rules">rules</a>
+  <a href="/audit">audit</a>
+  <a href="/settings" class="active">settings</a>
+  <span class="spacer"></span>
+  <span class="identity" id="identity">…</span>
+  <button class="btn" id="logoutBtn">Sign out</button>
+</header>
+
+<main>
+  <h1>Settings</h1>
+  <p class="lead">
+    User accounts and API tokens. Owners can manage everyone; admins can manage their tenant; editors and viewers can rotate their own password and not much else.
+  </p>
+
+  <section>
+    <h2>Users</h2>
+    <div id="usersList"></div>
+    <div class="form-grid" style="margin-top: 16px;">
+      <label>username</label><input id="u-name"/>
+      <label>password</label><input id="u-pass" type="password"/>
+      <label>role</label>
+      <select id="u-role">
+        <option>viewer</option>
+        <option>editor</option>
+        <option>admin</option>
+        <option>owner</option>
+      </select>
+      <label>tenant</label><input id="u-tenant" placeholder="optional"/>
+    </div>
+    <div style="margin-top: 12px;"><button class="btn primary" id="addUserBtn">Add user</button></div>
+  </section>
+
+  <section>
+    <h2>API tokens</h2>
+    <div id="tokensList"></div>
+    <div class="form-grid" style="margin-top: 16px;">
+      <label>name</label><input id="t-name" placeholder="e.g. ci-pipeline"/>
+      <label>role</label>
+      <select id="t-role">
+        <option>viewer</option>
+        <option>editor</option>
+        <option>admin</option>
+        <option>owner</option>
+      </select>
+      <label>tenant</label><input id="t-tenant" placeholder="optional"/>
+      <label></label><span></span>
+    </div>
+    <div style="margin-top: 12px;"><button class="btn primary" id="mintBtn">Mint token</button></div>
+    <div class="secret-reveal" id="secretReveal" style="display: none;"></div>
+  </section>
+</main>
+
+<div id="toast" class="toast" style="display: none;"></div>
+
+<script>
+  function toast(msg, kind) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.className = "toast " + (kind || "");
+    t.style.display = "block";
+    clearTimeout(t._h);
+    t._h = setTimeout(() => { t.style.display = "none"; }, 5000);
+  }
+  function escapeHTML(s) { return s == null ? "" : String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+  function pill(text, cls) { return `<span class="pill ${cls || ""}">${escapeHTML(text)}</span>`; }
+
+  let isAnonymous = false;
+
+  async function loadIdentity() {
+    const r = await fetch("/auth/session", { credentials: "same-origin" });
+    if (r.status === 401) {
+      window.location.href = "/login?next=" + encodeURIComponent(window.location.pathname);
+      return;
+    }
+    if (!r.ok) {
+      document.getElementById("identity").textContent = "(unable to read session)";
+      return;
+    }
+    const me = await r.json();
+    isAnonymous = !!me.anonymous;
+    if (isAnonymous) {
+      document.getElementById("identity").innerHTML = `<b>anonymous</b> · demo (no auth)`;
+      document.getElementById("logoutBtn").style.display = "none";
+    } else {
+      document.getElementById("identity").innerHTML = `<b>${escapeHTML(me.username || me.role)}</b> · ${escapeHTML(me.role)}${me.tenant_id ? " · " + escapeHTML(me.tenant_id) : ""}`;
+    }
+  }
+
+  async function loadUsers() {
+    const wrap = document.getElementById("usersList");
+    if (isAnonymous) {
+      wrap.innerHTML = `<div class="empty">User management is not enabled in this deployment. Set <code>HOPFRAME_USERS_PATH</code> + <code>HOPFRAME_BOOTSTRAP_ADMIN</code> on the control plane to turn it on.</div>`;
+      return;
+    }
+    const r = await fetch("/v1/users", { credentials: "same-origin" });
+    if (!r.ok) { wrap.innerHTML = `<div class="empty">${r.status} ${escapeHTML(await r.text())}</div>`; return; }
+    const body = await r.json();
+    if (!body.users || body.users.length === 0) { wrap.innerHTML = `<div class="empty">No users yet.</div>`; return; }
+    let html = '<table><thead><tr><th>Username</th><th>Role</th><th>Tenant</th><th>Last login</th><th></th></tr></thead><tbody>';
+    for (const u of body.users) {
+      html += `<tr>
+        <td><b>${escapeHTML(u.username)}</b></td>
+        <td>${pill(u.role, u.role)}</td>
+        <td>${escapeHTML(u.tenant_id || "-")}</td>
+        <td>${escapeHTML(u.last_login || "-")}</td>
+        <td>
+          <button class="btn" data-act="rotate" data-name="${escapeHTML(u.username)}">rotate password</button>
+          <button class="btn danger" data-act="delete" data-name="${escapeHTML(u.username)}">delete</button>
+        </td>
+      </tr>`;
+    }
+    html += "</tbody></table>";
+    wrap.innerHTML = html;
+    wrap.querySelectorAll("button[data-act]").forEach(b => b.addEventListener("click", onUserAct));
+  }
+
+  async function onUserAct(ev) {
+    const act = ev.currentTarget.dataset.act;
+    const name = ev.currentTarget.dataset.name;
+    if (act === "delete") {
+      if (!confirm("Delete user " + name + "?")) return;
+      const r = await fetch("/v1/users/" + encodeURIComponent(name), { method: "DELETE", credentials: "same-origin" });
+      if (r.ok) { toast("deleted", "ok"); loadUsers(); }
+      else toast(await r.text(), "err");
+    }
+    if (act === "rotate") {
+      const pass = prompt("New password for " + name + " (min 8 chars):");
+      if (!pass) return;
+      const r = await fetch("/v1/users/" + encodeURIComponent(name) + "/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ password: pass }),
+      });
+      if (r.ok) toast("password rotated", "ok");
+      else toast(await r.text(), "err");
+    }
+  }
+
+  async function addUser() {
+    const body = {
+      username: document.getElementById("u-name").value.trim(),
+      password: document.getElementById("u-pass").value,
+      role: document.getElementById("u-role").value,
+      tenant_id: document.getElementById("u-tenant").value.trim() || undefined,
+    };
+    const r = await fetch("/v1/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify(body),
+    });
+    if (r.ok) {
+      toast("user created", "ok");
+      document.getElementById("u-name").value = "";
+      document.getElementById("u-pass").value = "";
+      loadUsers();
+    } else {
+      toast(await r.text(), "err");
+    }
+  }
+
+  async function loadTokens() {
+    const wrap = document.getElementById("tokensList");
+    const r = await fetch("/v1/tokens", { credentials: "same-origin" });
+    if (r.status === 404) {
+      wrap.innerHTML = `<div class="empty">API token management is not enabled. Set <code>HOPFRAME_TOKENS_PATH</code> on the control plane to turn it on.</div>`;
+      return;
+    }
+    if (!r.ok) { wrap.innerHTML = `<div class="empty">${r.status} ${escapeHTML(await r.text())}</div>`; return; }
+    const body = await r.json();
+    if (!body.tokens || body.tokens.length === 0) { wrap.innerHTML = `<div class="empty">No API tokens yet.</div>`; return; }
+    let html = '<table><thead><tr><th>Name</th><th>Role</th><th>Tenant</th><th>Created</th><th>Last used</th><th></th></tr></thead><tbody>';
+    for (const t of body.tokens) {
+      html += `<tr>
+        <td><b>${escapeHTML(t.name)}</b><br/><span class="brand-meta">${escapeHTML(t.id)}</span></td>
+        <td>${pill(t.role, t.role)}</td>
+        <td>${escapeHTML(t.tenant_id || "-")}</td>
+        <td>${escapeHTML(t.created_at || "-")}</td>
+        <td>${escapeHTML(t.last_used || "-")}</td>
+        <td><button class="btn danger" data-id="${escapeHTML(t.id)}">revoke</button></td>
+      </tr>`;
+    }
+    html += "</tbody></table>";
+    wrap.innerHTML = html;
+    wrap.querySelectorAll("button[data-id]").forEach(b => b.addEventListener("click", async (ev) => {
+      const id = ev.currentTarget.dataset.id;
+      if (!confirm("Revoke token " + id + "?")) return;
+      const r = await fetch("/v1/tokens/" + encodeURIComponent(id), { method: "DELETE", credentials: "same-origin" });
+      if (r.ok) { toast("revoked", "ok"); loadTokens(); }
+      else toast(await r.text(), "err");
+    }));
+  }
+
+  async function mintToken() {
+    const body = {
+      name: document.getElementById("t-name").value.trim(),
+      role: document.getElementById("t-role").value,
+      tenant_id: document.getElementById("t-tenant").value.trim() || undefined,
+    };
+    const r = await fetch("/v1/tokens", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify(body),
+    });
+    if (r.ok) {
+      const t = await r.json();
+      const reveal = document.getElementById("secretReveal");
+      reveal.innerHTML = `<b>Token minted. Copy now; this is the only time you will see the secret.</b><div>${escapeHTML(t.secret)}</div>`;
+      reveal.style.display = "block";
+      document.getElementById("t-name").value = "";
+      loadTokens();
+    } else {
+      toast(await r.text(), "err");
+    }
+  }
+
+  document.getElementById("logoutBtn").addEventListener("click", async () => {
+    await fetch("/auth/logout", { method: "POST", credentials: "same-origin" });
+    window.location.href = "/login";
+  });
+  document.getElementById("addUserBtn").addEventListener("click", addUser);
+  document.getElementById("mintBtn").addEventListener("click", mintToken);
+
+  loadIdentity();
+  loadUsers();
+  loadTokens();
+</script>
+</body>
+</html>

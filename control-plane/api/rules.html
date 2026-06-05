@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Hopframe, detection rules</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0a0c10;
+    --bg-2: #0e1118;
+    --panel: #141821;
+    --panel-2: #1a1f2a;
+    --border: #232936;
+    --text: #e6e8ee;
+    --text-2: #a8aebd;
+    --muted: #6e7689;
+    --accent: #5aa8ff;
+    --accent-dim: rgba(90, 168, 255, 0.18);
+    --green: #4cd9a4;
+    --yellow: #f3c94f;
+    --red: #f0606b;
+    --orange: #f0884b;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12.5px; }
+  header.topbar { height: 44px; padding: 0 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 18px; background: var(--bg-2); }
+  .brand { font-size: 13px; letter-spacing: 0.4px; font-weight: 600; }
+  .brand .h { color: var(--accent); }
+  .brand-meta { color: var(--muted); font-size: 11px; margin-left: 4px; }
+  .topbar .spacer { flex: 1; }
+  .topbar a { color: var(--text-2); text-decoration: none; font-size: 12px; padding: 4px 10px; border-radius: 4px; }
+  .topbar a:hover { background: var(--panel); color: var(--text); }
+  .topbar a.active { color: var(--accent); }
+  input, select { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 5px 10px; font-family: inherit; font-size: 12px; }
+  main { max-width: 1180px; margin: 0 auto; padding: 22px 16px 64px; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .lead { color: var(--text-2); margin: 0 0 22px; max-width: 800px; line-height: 1.55; }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; margin-bottom: 18px; }
+  h2 { font-size: 13px; margin: 0 0 12px; letter-spacing: 0.4px; text-transform: uppercase; color: var(--text-2); font-weight: 600; }
+  .strip { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  .stat { background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px; padding: 8px 12px; min-width: 110px; }
+  .stat .label { color: var(--muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .stat .value { color: var(--text); font-size: 16px; font-weight: 500; margin-top: 3px; }
+  .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; padding: 6px 10px; border-bottom: 1px solid var(--border); }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:hover td { background: var(--panel-2); }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; border: 1px solid var(--border); color: var(--text-2); }
+  .pill.crit { color: var(--red); border-color: var(--red); }
+  .pill.high { color: var(--orange); border-color: var(--orange); }
+  .pill.med  { color: var(--yellow); border-color: var(--yellow); }
+  .pill.low  { color: var(--green); border-color: var(--green); }
+  .pill.info { color: var(--text-2); }
+  .pill.mode-block { color: var(--red); border-color: var(--red); }
+  .pill.mode-warn { color: var(--yellow); border-color: var(--yellow); }
+  .pill.mode-monitor { color: var(--text-2); }
+  details { background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px; padding: 8px 12px; margin-top: 6px; }
+  details summary { cursor: pointer; color: var(--text-2); font-size: 11.5px; }
+  details[open] summary { color: var(--text); }
+  pre { margin: 6px 0 0; font-size: 11px; color: var(--text-2); white-space: pre-wrap; word-break: break-all; }
+  .empty { color: var(--muted); padding: 24px; text-align: center; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand"><span class="h">HOPFRAME</span><span class="brand-meta">detection rules</span></div>
+  <a href="/">live</a>
+  <a href="/dashboard">dashboard</a>
+  <a href="/policies">policies</a>
+  <a href="/sensors">sensors</a>
+  <a href="/records">records</a>
+  <a href="/rules" class="active">rules</a>
+  <a href="/audit">audit</a>
+  <a href="/settings">settings</a>
+  <span class="spacer"></span>
+  <span class="brand-meta" id="version">version: -</span>
+</header>
+
+<main>
+  <h1>Detection rules</h1>
+  <p class="lead">
+    The rule pack ships in <code>content/&lt;category&gt;/*.yaml</code>. The matchers are RE2 regex (no backreferences, no lookarounds, deterministic). Each finding cites the rule's content hash so an auditor can reproduce the result on the same input.
+  </p>
+
+  <div class="strip" id="strip"></div>
+
+  <section>
+    <div class="toolbar">
+      <input id="filter" placeholder="filter by id, description, or pattern…" style="flex: 1; min-width: 240px;"/>
+      <select id="catFilter"><option value="">all categories</option></select>
+      <select id="sevFilter">
+        <option value="">all severities</option>
+        <option>critical</option>
+        <option>high</option>
+        <option>medium</option>
+        <option>low</option>
+        <option>info</option>
+      </select>
+      <select id="modeFilter">
+        <option value="">all modes</option>
+        <option>block</option>
+        <option>warn</option>
+        <option>monitor</option>
+      </select>
+    </div>
+    <div id="rulesList"></div>
+  </section>
+</main>
+
+<script>
+  let rules = [];
+
+  async function load() {
+    const r = await fetch("/v1/rules", { credentials: "same-origin" });
+    if (r.status === 401) {
+      window.location.href = "/login?next=" + encodeURIComponent(window.location.pathname);
+      return;
+    }
+    if (r.status === 404) {
+      document.getElementById("rulesList").innerHTML = `<div class="empty">
+        <div style="margin-bottom: 10px;">No content root configured on this control plane.</div>
+        <div style="font-size: 11px; color: var(--text-2); max-width: 560px; margin: 0 auto;">
+          Set <code>HOPFRAME_CONTENT_ROOT</code> to the path of the rule pack (the bundled <code>content/</code> directory or your override) and restart. <code>make run</code> turns this on automatically.
+        </div>
+      </div>`;
+      return;
+    }
+    if (!r.ok) {
+      document.getElementById("rulesList").innerHTML = `<div class="empty">${r.status} ${escapeHTML(await r.text())}</div>`;
+      return;
+    }
+    const body = await r.json();
+    rules = body.rules || [];
+    document.getElementById("version").textContent = "content version: " + (body.version || "-");
+
+    // Stat strip.
+    const sevCount = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
+    const modeCount = { block: 0, warn: 0, monitor: 0 };
+    for (const rule of rules) {
+      sevCount[rule.severity] = (sevCount[rule.severity] || 0) + 1;
+      modeCount[rule.mode] = (modeCount[rule.mode] || 0) + 1;
+    }
+    const strip = document.getElementById("strip");
+    strip.innerHTML = `
+      <div class="stat"><div class="label">rules</div><div class="value">${rules.length}</div></div>
+      <div class="stat"><div class="label">categories</div><div class="value">${Object.keys(body.categories || {}).length}</div></div>
+      <div class="stat"><div class="label">block</div><div class="value" style="color:var(--red)">${modeCount.block}</div></div>
+      <div class="stat"><div class="label">warn</div><div class="value" style="color:var(--yellow)">${modeCount.warn}</div></div>
+      <div class="stat"><div class="label">monitor</div><div class="value">${modeCount.monitor}</div></div>
+      <div class="stat"><div class="label">critical</div><div class="value" style="color:var(--red)">${sevCount.critical}</div></div>
+      <div class="stat"><div class="label">high</div><div class="value" style="color:var(--orange)">${sevCount.high}</div></div>
+    `;
+
+    // Category filter options.
+    const catSel = document.getElementById("catFilter");
+    while (catSel.options.length > 1) catSel.remove(1);
+    for (const cat of Object.keys(body.categories || {}).sort()) {
+      const opt = document.createElement("option");
+      opt.value = cat;
+      opt.textContent = cat + " (" + body.categories[cat] + ")";
+      catSel.appendChild(opt);
+    }
+    render();
+  }
+
+  function escapeHTML(s) { return s == null ? "" : String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+  function sevPill(sev) {
+    const cls = { critical: "crit", high: "high", medium: "med", low: "low", info: "info" }[sev] || "info";
+    return `<span class="pill ${cls}">${escapeHTML(sev || "info")}</span>`;
+  }
+  function modePill(mode) {
+    return `<span class="pill mode-${escapeHTML(mode || "monitor")}">${escapeHTML(mode || "monitor")}</span>`;
+  }
+
+  function render() {
+    const q = document.getElementById("filter").value.toLowerCase().trim();
+    const cat = document.getElementById("catFilter").value;
+    const sev = document.getElementById("sevFilter").value;
+    const mode = document.getElementById("modeFilter").value;
+    const wrap = document.getElementById("rulesList");
+
+    const filtered = rules.filter(r => {
+      if (cat && r.category !== cat) return false;
+      if (sev && r.severity !== sev) return false;
+      if (mode && r.mode !== mode) return false;
+      if (q) {
+        const hay = (r.id + " " + (r.description||"") + " " + (r.patterns||[]).join(" ")).toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+
+    if (filtered.length === 0) {
+      wrap.innerHTML = `<div class="empty">No rules match.</div>`;
+      return;
+    }
+    let html = '<table><thead><tr><th>ID</th><th>Category</th><th>Severity</th><th>Mode</th><th>Description</th></tr></thead><tbody>';
+    for (const r of filtered) {
+      html += `<tr>
+        <td><code>${escapeHTML(r.id)}</code><details><summary>matcher</summary>
+          <pre>fields: ${escapeHTML((r.fields || []).join(", ") || "any")}
+patterns:
+${(r.patterns || []).map(p => "  " + escapeHTML(p)).join("\n")}
+${r.targets && r.targets.length ? "targets: " + escapeHTML(r.targets.join(", ")) + "\n" : ""}${r.directions && r.directions.length ? "directions: " + escapeHTML(r.directions.join(", ")) + "\n" : ""}content_hash: ${escapeHTML((r.content_hash || "").slice(0, 16))}…</pre>
+        </details></td>
+        <td>${escapeHTML(r.category)}</td>
+        <td>${sevPill(r.severity)}</td>
+        <td>${modePill(r.mode)}</td>
+        <td>${escapeHTML(r.description || "")}</td>
+      </tr>`;
+    }
+    html += "</tbody></table>";
+    wrap.innerHTML = html;
+  }
+
+  document.getElementById("filter").addEventListener("input", render);
+  document.getElementById("catFilter").addEventListener("change", render);
+  document.getElementById("sevFilter").addEventListener("change", render);
+  document.getElementById("modeFilter").addEventListener("change", render);
+
+  load();
+</script>
+</body>
+</html>

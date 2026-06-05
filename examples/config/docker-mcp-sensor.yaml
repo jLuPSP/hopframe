@@ -1,0 +1,40 @@
+# Sensor config used inside the Docker image. Most fields are
+# overridden at runtime by HOPFRAME_* env vars (UPSTREAM_URL,
+# LISTEN_ADDR, EMITTER_URL, API_TOKEN, SENSOR_ID, TENANT_ID); this
+# file just provides defaults the env-var layer composes onto.
+#
+# To override the upstream MCP at boot:
+#
+#   docker run \
+#     -e HOPFRAME_UPSTREAM_URL=http://your-mcp:8080 \
+#     -e HOPFRAME_EMITTER_URL=http://control-plane:7090/v1/events \
+#     ghcr.io/jlupsp/hopframe \
+#     mcp-sensor --config /etc/hopframe/mcp-sensor.yaml
+
+sensor:
+  id: hopframe-docker-mcp
+  tenant_id: default
+
+upstream:
+  url: http://upstream-mcp:8080
+  timeout: 30s
+
+listen:
+  address: ":7080"
+  base_path: /mcp
+
+rules:
+  dirs:
+    - /etc/hopframe/content
+  disabled_rules: []
+
+emitter:
+  sink: http
+  url: http://control-plane:7090/v1/events
+  buffer_size: 2048
+  spool_path: /var/lib/hopframe-sensor/spool.ndjson
+  spool_max_bytes: 67108864
+  replay_interval: 5s
+
+policy:
+  fail_open: true

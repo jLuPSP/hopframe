@@ -1,0 +1,62 @@
+category: tool-poisoning
+rules:
+  - id: a2a.card.authority_claim
+    description: |
+      Agent card description impersonates a system or admin role to
+      influence delegating agents at discovery time.
+    severity: critical
+    mode: block
+    targets:
+      - agent.card
+    fields:
+      - "card.description"
+      - "card.skills.*.description"
+    patterns:
+      - '<\s*(?:system|admin|root)[^>]*>'
+      - '\[\[\s*(?:system|admin|developer)\s*\]\]'
+
+  - id: a2a.card.capability_laundering
+    description: |
+      Card claims an unusually broad set of authorities (root, admin,
+      bypass, etc.) suggesting a confused-deputy attempt.
+    severity: high
+    mode: warn
+    targets:
+      - agent.card
+    fields:
+      - "card.description"
+      - "card.skills.*.description"
+      - "card.skills.*.tags.*"
+    patterns:
+      - '\b(?:root|admin|sudo|superuser)\s+(?:access|privilege|capability)'
+      - 'bypass\s+(?:safety|policy|guardrails?)'
+
+  - id: a2a.card.invisible_unicode
+    description: |
+      Agent card contains invisible Unicode (zero-width or tag-block)
+      bytes, a common smuggling technique to hide instructions in
+      otherwise plain descriptive text.
+    severity: high
+    mode: block
+    targets:
+      - agent.card
+    case_sensitive: true
+    fields:
+      - "card.name"
+      - "card.description"
+      - "card.skills.*.name"
+      - "card.skills.*.description"
+    patterns:
+      - '[\x{E0000}-\x{E007F}]'
+      - '[\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2066}-\x{2069}]{2,}'
+
+  - id: a2a.card.untrusted_url_scheme
+    description: Card URL uses a non-web scheme (file, ftp, javascript, data, …).
+    severity: medium
+    mode: warn
+    targets:
+      - agent.card
+    fields:
+      - "card.url"
+    patterns:
+      - '^(?:file|ftp|gopher|ldap|tel|sms|javascript|data|chrome|jar):'

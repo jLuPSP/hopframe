@@ -1,0 +1,80 @@
+{
+  "name": "@hopframe/sdk",
+  "version": "0.1.0",
+  "description": "Hopframe TypeScript SDK. Emit agent traffic events from Node-based MCP clients, MCP servers, and JS agent frameworks.",
+  "license": "BSL-1.1",
+  "author": {
+    "name": "Jordan Lu",
+    "url": "https://github.com/jLuPSP"
+  },
+  "homepage": "https://github.com/jLuPSP/hopframe",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jLuPSP/hopframe.git",
+    "directory": "sdk/typescript"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./mcp": {
+      "import": "./dist/integrations/mcp.js",
+      "types": "./dist/integrations/mcp.d.ts"
+    },
+    "./ai-sdk": {
+      "import": "./dist/integrations/ai-sdk.js",
+      "types": "./dist/integrations/ai-sdk.d.ts"
+    },
+    "./langchainjs": {
+      "import": "./dist/integrations/langchainjs.js",
+      "types": "./dist/integrations/langchainjs.d.ts"
+    },
+    "./mastra": {
+      "import": "./dist/integrations/mastra.js",
+      "types": "./dist/integrations/mastra.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test --import=tsx test/*.test.ts",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "agent",
+    "security",
+    "mcp",
+    "a2a",
+    "langchain",
+    "ai-sdk",
+    "mastra",
+    "observability"
+  ],
+  "dependencies": {},
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0"
+  },
+  "peerDependencies": {
+    "@modelcontextprotocol/sdk": ">=1.0.0",
+    "ai": ">=3.0.0",
+    "langchain": ">=0.3.0",
+    "@mastra/core": ">=0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@modelcontextprotocol/sdk": { "optional": true },
+    "ai": { "optional": true },
+    "langchain": { "optional": true },
+    "@mastra/core": { "optional": true }
+  }
+}

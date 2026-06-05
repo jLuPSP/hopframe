@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Hopframe, audit reports</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0a0c10;
+    --bg-2: #0e1118;
+    --panel: #141821;
+    --panel-2: #1a1f2a;
+    --border: #232936;
+    --border-2: #2c3344;
+    --text: #e6e8ee;
+    --text-2: #a8aebd;
+    --muted: #6e7689;
+    --accent: #5aa8ff;
+    --accent-dim: rgba(90, 168, 255, 0.18);
+    --green: #4cd9a4;
+    --green-dim: rgba(76, 217, 164, 0.13);
+    --yellow: #f3c94f;
+    --red: #f0606b;
+    --red-dim: rgba(240, 96, 107, 0.13);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
+  }
+  header.topbar {
+    height: 44px;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    background: var(--bg-2);
+  }
+  .brand { font-size: 13px; letter-spacing: 0.4px; font-weight: 600; }
+  .brand .h { color: var(--accent); }
+  .brand-meta { color: var(--muted); font-size: 11px; margin-left: 4px; }
+  .topbar .spacer { flex: 1; }
+  .topbar a { color: var(--text-2); text-decoration: none; font-size: 12px; padding: 4px 10px; border-radius: 4px; }
+  .topbar a:hover { background: var(--panel); color: var(--text); }
+  .topbar a.active { color: var(--accent); }
+  .trust {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 4px; border: 1px solid;
+    font-size: 11px; letter-spacing: 0.3px;
+    background: var(--green-dim); color: var(--green);
+    border-color: rgba(76, 217, 164, 0.3);
+  }
+  .trust.broken { background: var(--red-dim); color: var(--red); border-color: rgba(240, 96, 107, 0.4); }
+  .trust svg { display: block; }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 32px 24px 64px; }
+  h1 { font-size: 18px; font-weight: 600; letter-spacing: 0.2px; margin: 0 0 6px; }
+  .lead { color: var(--text-2); font-size: 13px; line-height: 1.55; max-width: 720px; margin: 0 0 28px; }
+  .lead b { color: var(--text); font-weight: 500; }
+
+  section { margin-bottom: 32px; }
+  section h2 {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px;
+    color: var(--muted); font-weight: 500; margin: 0 0 12px;
+  }
+
+  .reports { display: grid; gap: 12px; }
+  .report {
+    border: 1px solid var(--border); border-radius: 6px;
+    background: var(--panel); padding: 16px 18px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: center;
+  }
+  .report:hover { border-color: var(--border-2); }
+  .report .title { font-size: 13.5px; font-weight: 500; margin-bottom: 4px; }
+  .report .desc { font-size: 11.5px; color: var(--text-2); line-height: 1.4; }
+  .report .meta { font-size: 11px; color: var(--muted); margin-top: 6px; }
+  .report .meta b { color: var(--text-2); font-weight: 500; }
+  .report .actions { display: flex; gap: 8px; }
+  .btn {
+    background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    border-radius: 4px; padding: 6px 12px; font-family: inherit; font-size: 11.5px;
+    cursor: pointer; text-decoration: none;
+  }
+  .btn:hover { border-color: var(--accent); background: var(--panel-2); }
+  .btn.primary { border-color: var(--accent); color: var(--accent); }
+  .btn.primary:hover { background: var(--accent-dim); }
+
+  .builder {
+    border: 1px solid var(--border); border-radius: 6px;
+    background: var(--panel); padding: 18px;
+  }
+  .builder h3 { font-size: 13px; margin: 0 0 14px; font-weight: 500; }
+  .builder .row { display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+  .builder label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--text-2); }
+  .builder select, .builder input {
+    background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    border-radius: 4px; padding: 6px 10px; font-family: inherit; font-size: 12px;
+    min-width: 180px;
+  }
+  .builder .actions { display: flex; gap: 8px; margin-top: 6px; }
+
+  .proof-card {
+    border: 1px solid var(--border); border-radius: 6px;
+    background: var(--panel-2); padding: 16px 18px;
+    font-size: 12px; line-height: 1.6;
+  }
+  .proof-card .row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .proof-card .row b { color: var(--text); font-weight: 500; min-width: 130px; display: inline-block; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; }
+  .proof-card code { color: var(--text-2); font-size: 11.5px; }
+  .proof-card .copy {
+    background: transparent; border: 0; color: var(--accent); cursor: pointer;
+    font-family: inherit; font-size: 11px; padding: 0 4px;
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand"><span class="h">HOPFRAME</span><span class="brand-meta">audit reports · v0.1</span></div>
+  <a href="/">live</a>
+  <a href="/dashboard">dashboard</a>
+  <a href="/policies">policies</a>
+  <a href="/sensors">sensors</a>
+  <a href="/records">records</a>
+  <a href="/rules">rules</a>
+  <a href="/audit" class="active">audit</a>
+  <a href="/settings">settings</a>
+  <span class="spacer"></span>
+  <span class="trust" id="trustBadge" title="Audit log integrity check.">
+    <svg width="12" height="12" viewBox="0 0 12 12"><circle cx="6" cy="6" r="5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M3.5 6 L5.3 7.8 L8.5 4.2" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>
+    <span id="trustLabel">integrity</span>
+  </span>
+</header>
+
+<main>
+  <h1>Audit reports</h1>
+  <p class="lead">
+    Every report you download from this page is bound to the current
+    state of the append-only audit log via a <b>cryptographic chain
+    proof</b> in its trailer. That proof binds the export to a specific
+    point in chain history; an auditor (or you, six months from now)
+    can re-walk the chain over the included records and confirm none
+    were altered after the fact. <span style="color:var(--muted)">No
+    other tool in this category includes export-time integrity proof
+    by default.</span>
+  </p>
+
+  <section>
+    <h2>Pre-built reports</h2>
+    <div class="reports" id="reports"></div>
+  </section>
+
+  <section>
+    <h2>Custom export</h2>
+    <div class="builder">
+      <h3>Compose a signed export</h3>
+      <div class="row">
+        <label>action
+          <select id="b-action">
+            <option value="">any</option>
+            <option value="allow">allow</option>
+            <option value="warn">warn</option>
+            <option value="block">block</option>
+          </select>
+        </label>
+        <label>min severity
+          <select id="b-sev">
+            <option value="">any</option>
+            <option value="low">low</option>
+            <option value="medium">medium</option>
+            <option value="high">high</option>
+            <option value="critical">critical</option>
+          </select>
+        </label>
+        <label>category
+          <select id="b-cat">
+            <option value="">any</option>
+            <option value="prompt-injection">prompt-injection</option>
+            <option value="tool-poisoning">tool-poisoning</option>
+            <option value="credential-exfiltration">credential-exfiltration</option>
+            <option value="pii-leakage">pii-leakage</option>
+            <option value="policy">policy</option>
+          </select>
+        </label>
+        <label>format
+          <select id="b-fmt">
+            <option value="ndjson">NDJSON (with proof trailer)</option>
+            <option value="csv">CSV (with proof footer)</option>
+          </select>
+        </label>
+      </div>
+      <div class="actions">
+        <a class="btn primary" id="b-download" href="#">Download signed export</a>
+        <button class="btn" id="b-preview">Preview record count</button>
+        <span id="b-count" style="margin-left:6px; color:var(--text-2); font-size:11.5px;"></span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Current chain head</h2>
+    <div class="proof-card" id="chainCard">
+      <div class="row"><b>chain head</b><code id="ch-head">-</code><button class="copy" id="ch-copy">copy</button></div>
+      <div class="row"><b>seq</b><code id="ch-seq">-</code></div>
+      <div class="row"><b>last verified</b><code id="ch-verified">-</code></div>
+      <div class="row"><b>verify command</b><code>curl -s ${origin}/v1/verify</code></div>
+    </div>
+  </section>
+</main>
+
+<script>
+const REPORTS = [
+  { title: "All blocks, last 24h",
+    desc: "Every event the sensor refused to forward. Highest-signal evidence of attempted attack.",
+    params: { action: 'block' }, fmt: 'csv' },
+  { title: "Credential exfiltration, last 24h",
+    desc: "Tool calls or results that contained credential-shaped strings (AWS keys, GitHub PATs, etc.).",
+    params: { category: 'credential-exfiltration' }, fmt: 'csv' },
+  { title: "High+ severity, last 24h",
+    desc: "All findings at high or critical severity across both protocols.",
+    params: { min_severity: 'high' }, fmt: 'csv' },
+  { title: "Cross-protocol taint events",
+    desc: "Cases where data from an MCP tool result was reused in an A2A task message and blocked.",
+    params: { category: 'policy', search: 'taint' }, fmt: 'ndjson' },
+  { title: "Full event log, NDJSON",
+    desc: "Every event in the cache window with a chain-proof trailer line. For ingest into Splunk, Loki, or your SIEM of choice.",
+    params: {}, fmt: 'ndjson' },
+];
+
+function $(id) { return document.getElementById(id); }
+function buildHref(fmt, params) {
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) if (v) p.set(k, v);
+  return '/v1/events.' + fmt + (p.toString() ? '?' + p.toString() : '');
+}
+
+function renderReports() {
+  const el = $('reports');
+  el.innerHTML = REPORTS.map(r => `
+    <div class="report">
+      <div>
+        <div class="title">${r.title}</div>
+        <div class="desc">${r.desc}</div>
+        <div class="meta"><b>format:</b> ${r.fmt.toUpperCase()} · <b>filter:</b> ${Object.entries(r.params).map(([k,v])=>k+'='+v).join(' & ') || 'all'}</div>
+      </div>
+      <div class="actions">
+        <a class="btn primary" href="${buildHref(r.fmt, r.params)}">download signed</a>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function refreshChainCard() {
+  try {
+    const r = await fetch('/v1/stats');
+    const j = await r.json();
+    $('ch-head').textContent = j.head_hash || '-';
+    $('ch-seq').textContent = j.seq;
+    $('ch-verified').textContent = new Date().toLocaleString();
+  } catch (_) {}
+}
+
+async function checkIntegrity() {
+  const badge = $('trustBadge');
+  const label = $('trustLabel');
+  try {
+    const r = await fetch('/v1/verify');
+    const j = await r.json();
+    if (j.ok) {
+      badge.classList.remove('broken');
+      label.textContent = 'integrity verified';
+    } else {
+      badge.classList.add('broken');
+      label.textContent = 'INTEGRITY BROKEN @ seq ' + (j.bad_seq || '?');
+    }
+  } catch (_) {
+    label.textContent = 'integrity check failed';
+  }
+}
+
+function updateBuilderHref() {
+  const params = {
+    action: $('b-action').value,
+    min_severity: $('b-sev').value,
+    category: $('b-cat').value,
+  };
+  $('b-download').href = buildHref($('b-fmt').value, params);
+}
+['b-action','b-sev','b-cat','b-fmt'].forEach(id => $(id).addEventListener('input', updateBuilderHref));
+
+$('b-preview').addEventListener('click', async () => {
+  const params = new URLSearchParams();
+  if ($('b-action').value) params.set('action', $('b-action').value);
+  if ($('b-sev').value) params.set('min_severity', $('b-sev').value);
+  if ($('b-cat').value) params.set('category', $('b-cat').value);
+  params.set('limit', '10000');
+  const r = await fetch('/v1/events?' + params.toString());
+  const j = await r.json();
+  $('b-count').textContent = `${(j.records || []).length} records match`;
+});
+
+$('ch-copy').addEventListener('click', async () => {
+  await navigator.clipboard.writeText($('ch-head').textContent);
+  $('ch-copy').textContent = 'copied';
+  setTimeout(() => $('ch-copy').textContent = 'copy', 1500);
+});
+
+renderReports();
+updateBuilderHref();
+refreshChainCard();
+checkIntegrity();
+setInterval(refreshChainCard, 5000);
+setInterval(checkIntegrity, 60000);
+</script>
+
+</body>
+</html>

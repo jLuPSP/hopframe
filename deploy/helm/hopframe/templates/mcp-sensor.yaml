@@ -1,0 +1,159 @@
+{{- if .Values.mcpSensor.enabled -}}
+{{- if not .Values.mcpSensor.upstream.url -}}
+{{- fail "mcpSensor.upstream.url is required" -}}
+{{- end -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "hopframe.mcpSensor.name" . }}-config
+  labels:
+    {{- include "hopframe.labels" . | nindent 4 }}
+data:
+  mcp-sensor.yaml: |
+    sensor:
+      id: {{ include "hopframe.mcpSensor.name" . }}
+      tenant_id: {{ .Release.Namespace | quote }}
+    upstream:
+      url: {{ .Values.mcpSensor.upstream.url | quote }}
+      timeout: 30s
+    listen:
+      address: ":{{ .Values.mcpSensor.service.port }}"
+      base_path: /mcp
+    rules:
+      dirs:
+        - /etc/hopframe/content
+    emitter:
+      sink: http
+      url: http://{{ include "hopframe.controlPlane.name" . }}:{{ .Values.controlPlane.service.port }}/v1/events
+      buffer_size: 4096
+      {{- if .Values.mcpSensor.spool.enabled }}
+      spool_path: /var/lib/hopframe-sensor/spool.ndjson
+      spool_max_bytes: 67108864
+      replay_interval: 5s
+      {{- end }}
+    policy:
+      fail_open: {{ .Values.mcpSensor.failOpen }}
+---
+apiVersion: apps/v1
+kind: {{ if .Values.mcpSensor.spool.enabled }}StatefulSet{{ else }}Deployment{{ end }}
+metadata:
+  name: {{ include "hopframe.mcpSensor.name" . }}
+  labels:
+    {{- include "hopframe.labels" . | nindent 4 }}
+    app.kubernetes.io/component: mcp-sensor
+spec:
+  replicas: {{ .Values.mcpSensor.replicas }}
+  {{- if .Values.mcpSensor.spool.enabled }}
+  serviceName: {{ include "hopframe.mcpSensor.name" . }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Chart.Name }}
+      app.kubernetes.io/component: mcp-sensor
+  template:
+    metadata:
+      labels:
+        {{- include "hopframe.labels" . | nindent 8 }}
+        app.kubernetes.io/component: mcp-sensor
+    spec:
+      containers:
+        - name: mcp-sensor
+          image: {{ include "hopframe.imageRef" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/usr/local/bin/mcp-sensor"]
+          args: ["--config=/etc/hopframe/mcp-sensor.yaml"]
+          env:
+            {{- with .Values.mcpSensor.controlPlaneToken }}
+            - name: HOPFRAME_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "hopframe.mcpSensor.name" $ }}-auth
+                  key: token
+            {{- end }}
+            {{- with .Values.mcpSensor.llmJudge.url }}
+            - name: HOPFRAME_LLM_JUDGE_URL
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.mcpSensor.llmJudge.apiKey }}
+            - name: HOPFRAME_LLM_JUDGE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "hopframe.mcpSensor.name" $ }}-auth
+                  key: llmJudgeApiKey
+            {{- end }}
+            {{- with .Values.mcpSensor.llmJudge.model }}
+            - name: HOPFRAME_LLM_JUDGE_MODEL
+              value: {{ . | quote }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.mcpSensor.service.port }}
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 5
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+          volumeMounts:
+            - name: config
+              mountPath: /etc/hopframe/mcp-sensor.yaml
+              subPath: mcp-sensor.yaml
+            - name: content
+              mountPath: /etc/hopframe/content
+            {{- if .Values.mcpSensor.spool.enabled }}
+            - name: spool
+              mountPath: /var/lib/hopframe-sensor
+            {{- end }}
+          resources:
+            {{- toYaml .Values.mcpSensor.resources | nindent 12 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "hopframe.mcpSensor.name" . }}-config
+        - name: content
+          configMap:
+            name: {{ include "hopframe.mcpSensor.name" . }}-content
+  {{- if .Values.mcpSensor.spool.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: spool
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: {{ .Values.mcpSensor.spool.size }}
+        {{- with .Values.mcpSensor.spool.storageClass }}
+        storageClassName: {{ . }}
+        {{- end }}
+  {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "hopframe.mcpSensor.name" . }}
+  labels:
+    {{- include "hopframe.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.mcpSensor.service.type }}
+  selector:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/component: mcp-sensor
+  ports:
+    - name: http
+      port: {{ .Values.mcpSensor.service.port }}
+      targetPort: http
+{{- if or .Values.mcpSensor.controlPlaneToken .Values.mcpSensor.llmJudge.apiKey }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "hopframe.mcpSensor.name" . }}-auth
+type: Opaque
+stringData:
+  {{- with .Values.mcpSensor.controlPlaneToken }}
+  token: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.mcpSensor.llmJudge.apiKey }}
+  llmJudgeApiKey: {{ . | quote }}
+  {{- end }}
+{{- end }}
+{{- end }}

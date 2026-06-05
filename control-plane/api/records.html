@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Hopframe, audit records</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0a0c10;
+    --bg-2: #0e1118;
+    --panel: #141821;
+    --panel-2: #1a1f2a;
+    --border: #232936;
+    --border-2: #2c3344;
+    --text: #e6e8ee;
+    --text-2: #a8aebd;
+    --muted: #6e7689;
+    --accent: #5aa8ff;
+    --accent-dim: rgba(90, 168, 255, 0.18);
+    --green: #4cd9a4;
+    --green-dim: rgba(76, 217, 164, 0.13);
+    --yellow: #f3c94f;
+    --yellow-dim: rgba(243, 201, 79, 0.12);
+    --red: #f0606b;
+    --red-dim: rgba(240, 96, 107, 0.13);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12.5px;
+  }
+  header.topbar {
+    height: 44px;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    background: var(--bg-2);
+  }
+  .brand { font-size: 13px; letter-spacing: 0.4px; font-weight: 600; }
+  .brand .h { color: var(--accent); }
+  .brand-meta { color: var(--muted); font-size: 11px; margin-left: 4px; }
+  .topbar .spacer { flex: 1; }
+  .topbar a { color: var(--text-2); text-decoration: none; font-size: 12px; padding: 4px 10px; border-radius: 4px; }
+  .topbar a:hover { background: var(--panel); color: var(--text); }
+  .topbar a.active { color: var(--accent); }
+  button.btn, input { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 4px; padding: 4px 10px; font-family: inherit; font-size: 12px; }
+  button.btn { cursor: pointer; }
+  button.btn:hover { border-color: var(--accent); }
+  button.btn.primary { border-color: var(--accent); color: var(--accent); }
+  main { max-width: 1180px; margin: 0 auto; padding: 22px 16px 64px; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .lead { color: var(--text-2); margin: 0 0 22px; max-width: 800px; line-height: 1.55; }
+  .lead b { color: var(--text); font-weight: 500; }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; margin-bottom: 18px; }
+  h2 { font-size: 13px; margin: 0 0 12px; letter-spacing: 0.4px; text-transform: uppercase; color: var(--text-2); font-weight: 600; }
+  .toolbar { display: flex; gap: 8px; align-items: center; }
+  .toolbar label { color: var(--text-2); font-size: 11.5px; }
+  .grid { display: grid; grid-template-columns: 280px 1fr; gap: 14px; }
+  .recList { background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px; max-height: 600px; overflow: auto; }
+  .recList .row { padding: 8px 12px; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .recList .row:hover { background: var(--panel); }
+  .recList .row.active { background: var(--accent-dim); }
+  .recList .row b { color: var(--text); }
+  .recList .row span { display: block; color: var(--muted); font-size: 11px; }
+  .panel { background: var(--panel-2); border: 1px solid var(--border); border-radius: 4px; padding: 14px; }
+  .field { margin-bottom: 10px; }
+  .field label { color: var(--muted); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.4px; display: block; margin-bottom: 3px; }
+  .field .val { background: var(--bg); border: 1px solid var(--border); border-radius: 3px; padding: 6px 8px; font-size: 11.5px; word-break: break-all; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; border: 1px solid var(--border); color: var(--text-2); }
+  .pill.allow { color: var(--text-2); }
+  .pill.warn { color: var(--yellow); border-color: var(--yellow); }
+  .pill.block { color: var(--red); border-color: var(--red); }
+  .pill.ok { color: var(--green); border-color: var(--green); }
+  .pill.fail { color: var(--red); border-color: var(--red); }
+  pre { margin: 0; font-size: 11px; color: var(--text-2); white-space: pre-wrap; word-break: break-all; }
+  .empty { color: var(--muted); padding: 24px; text-align: center; font-size: 12px; }
+  .verify-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand"><span class="h">HOPFRAME</span><span class="brand-meta">audit records · v0.1</span></div>
+  <a href="/">live</a>
+  <a href="/dashboard">dashboard</a>
+  <a href="/policies">policies</a>
+  <a href="/sensors">sensors</a>
+  <a href="/records" class="active">records</a>
+  <a href="/rules">rules</a>
+  <a href="/audit">audit</a>
+  <a href="/settings">settings</a>
+  <span class="spacer"></span>
+  <span class="brand-meta" id="chain-head">chain: -</span>
+</header>
+
+<main>
+  <h1>Audit records</h1>
+  <p class="lead">
+    Every record is hash-chained to its predecessor; the <b>chain head</b> binds the whole log. With a signing key configured, each record carries a <b>per-record signature</b> over its canonical bytes, so a single record can be disclosed to an auditor without revealing adjacent records. The <b>Merkle proof</b> ties the record to a snapshot window and lets the auditor verify membership without the rest of the chain. Verify a record below; the verification runs in your browser using the public key the control plane returned.
+  </p>
+
+  <div class="toolbar" style="margin-bottom: 14px;">
+    <label>filter</label>
+    <input id="filter" placeholder="action:block, severity:critical, category:tool-poisoning, ..."/>
+    <button class="btn primary" id="refresh">refresh</button>
+    <span class="brand-meta" id="status">-</span>
+  </div>
+
+  <div class="grid">
+    <div class="recList" id="recList"></div>
+    <div class="panel" id="detail"><div class="empty">Select a record on the left to inspect its signature and Merkle proof.</div></div>
+  </div>
+</main>
+
+<script>
+  function token() {
+    const u = new URL(window.location.href);
+    return u.searchParams.get("token") || localStorage.getItem("hopframe.token") || "";
+  }
+  function authHeaders() {
+    const h = {};
+    const t = token();
+    if (t) h["Authorization"] = "Bearer " + t;
+    return h;
+  }
+  function escapeHTML(s) {
+    if (s === undefined || s === null) return "";
+    return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+
+  let lastRecords = [];
+
+  async function loadList() {
+    const status = document.getElementById("status");
+    status.textContent = "loading";
+    const params = new URLSearchParams();
+    params.set("limit", "100");
+    const filter = document.getElementById("filter").value.trim();
+    for (const tok of filter.split(/[,\s]+/)) {
+      const i = tok.indexOf(":");
+      if (i < 0) continue;
+      params.set(tok.slice(0, i), tok.slice(i+1));
+    }
+    const r = await fetch("/v1/events?" + params.toString(), {headers: authHeaders()});
+    if (!r.ok) {
+      status.textContent = "list failed: " + r.status;
+      return;
+    }
+    const body = await r.json();
+    lastRecords = body.records || [];
+
+    const stats = await fetch("/v1/stats", {headers: authHeaders()});
+    if (stats.ok) {
+      const s = await stats.json();
+      document.getElementById("chain-head").textContent = "head: " + (s.head_hash ? s.head_hash.slice(0, 16) + "…" : "(empty)") + " seq=" + (s.seq || 0);
+    }
+
+    const wrap = document.getElementById("recList");
+    if (lastRecords.length === 0) {
+      wrap.innerHTML = `<div class="empty">
+        <div style="margin-bottom: 10px;">No records match.</div>
+        <div style="font-size: 11px; color: var(--text-2); max-width: 560px; margin: 0 auto;">
+          Send some traffic at the sensor to populate the chain. From the repo: <code>make run</code> boots the stack with a continuous traffic generator. Or post directly:<br/>
+          <code style="display:inline-block; margin-top:6px;">curl -X POST http://127.0.0.1:7080/mcp -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","id":"1","method":"tools/list"}'</code>
+        </div>
+      </div>`;
+      status.textContent = "0 records";
+      return;
+    }
+    wrap.innerHTML = lastRecords.map(rec => {
+      const ev = rec.event || {};
+      const action = ev.action || "allow";
+      return `<div class="row" data-seq="${rec.seq}">
+        <b>seq ${rec.seq}</b> <span class="pill ${escapeHTML(action)}">${escapeHTML(action)}</span>
+        <span>${escapeHTML(ev.protocol || "")} · ${escapeHTML(ev.message?.method || "")} · ${escapeHTML(ev.severity || "info")}</span>
+        <span>${escapeHTML(rec.ingest_at || "")}</span>
+      </div>`;
+    }).join("");
+    wrap.querySelectorAll(".row").forEach(row => {
+      row.addEventListener("click", () => loadRecord(parseInt(row.dataset.seq, 10)));
+    });
+    status.textContent = lastRecords.length + " records";
+  }
+
+  async function loadRecord(seq) {
+    document.querySelectorAll(".recList .row").forEach(r => r.classList.toggle("active", parseInt(r.dataset.seq, 10) === seq));
+    const detail = document.getElementById("detail");
+    detail.innerHTML = `<div class="empty">loading record ${seq}…</div>`;
+    const r = await fetch("/v1/records/" + seq, {headers: authHeaders()});
+    if (!r.ok) {
+      detail.innerHTML = `<div class="empty">load failed: ${r.status}</div>`;
+      return;
+    }
+    const body = await r.json();
+    renderDetail(body);
+  }
+
+  function renderDetail(body) {
+    const detail = document.getElementById("detail");
+    const rec = body.record;
+    const ev = rec.event || {};
+    let signing = "";
+    if (body.signature) {
+      signing = `
+        <div class="field"><label>signer public key (ed25519)</label><div class="val">${escapeHTML(body.public_key || "")}</div></div>
+        <div class="field"><label>per-record signature (base64)</label><div class="val">${escapeHTML(body.signature)}</div></div>
+        <div class="verify-row">
+          <button class="btn primary" id="verifyBtn">verify signature</button>
+          <span class="brand-meta" id="verify-out">click to verify locally</span>
+        </div>`;
+    } else {
+      signing = `<div class="field"><label>signer</label><div class="val">no signing key configured on the control plane (HOPFRAME_SIGNING_KEY)</div></div>`;
+    }
+    let merkle = "";
+    if (body.merkle_root) {
+      merkle = `
+        <div class="field"><label>merkle root (over ${body.merkle_window} most-recent records)</label><div class="val">${escapeHTML(body.merkle_root)}</div></div>
+        <div class="field"><label>merkle proof depth</label><div class="val">${(body.merkle_proof || []).length} steps</div></div>`;
+    }
+    let findings = "";
+    if (ev.findings && ev.findings.length > 0) {
+      findings = "<div class=\"field\"><label>findings</label>" + ev.findings.map(f => {
+        return `<div class="val" style="margin-top:6px;">
+          <b>${escapeHTML(f.rule_id)}</b> · ${escapeHTML(f.category)} · ${escapeHTML(f.severity)}
+          ${f.description ? '<div style="color:var(--muted);margin-top:3px;">' + escapeHTML(f.description) + '</div>' : ''}
+          ${f.metadata?.rule_content_hash ? '<div class="brand-meta" style="margin-top:3px;">rule_content_hash=' + escapeHTML(f.metadata.rule_content_hash.slice(0,16)) + '…</div>' : ''}
+        </div>`;
+      }).join("") + "</div>";
+    }
+    detail.innerHTML = `
+      <div class="field"><label>seq</label><div class="val">${rec.seq}</div></div>
+      <div class="field"><label>chain hash</label><div class="val">${escapeHTML(rec.hash)}</div></div>
+      <div class="field"><label>previous hash</label><div class="val">${escapeHTML(rec.prev_hash)}</div></div>
+      <div class="field"><label>action</label><span class="pill ${escapeHTML(ev.action || 'allow')}">${escapeHTML(ev.action || 'allow')}</span> <span class="pill">${escapeHTML(ev.severity || 'info')}</span></div>
+      ${findings}
+      ${signing}
+      ${merkle}
+      <div class="field"><label>canonical bytes</label><div class="val"><pre>${escapeHTML(body.canonical || "")}</pre></div></div>`;
+
+    const btn = document.getElementById("verifyBtn");
+    if (btn) btn.addEventListener("click", () => verify(body));
+  }
+
+  // Verify ed25519 signature in the browser using SubtleCrypto.
+  // Public key is hex-encoded; signature is base64.
+  async function verify(body) {
+    const out = document.getElementById("verify-out");
+    out.textContent = "verifying…";
+    try {
+      const pub = hexToBytes(body.public_key);
+      const sig = base64ToBytes(body.signature);
+      const data = new TextEncoder().encode(body.canonical);
+      const key = await crypto.subtle.importKey("raw", pub, {name: "Ed25519"}, false, ["verify"]);
+      const ok = await crypto.subtle.verify("Ed25519", key, sig, data);
+      if (ok) {
+        out.innerHTML = '<span class="pill ok">signature verified</span>';
+      } else {
+        out.innerHTML = '<span class="pill fail">signature did NOT verify</span>';
+      }
+    } catch (e) {
+      out.innerHTML = '<span class="pill fail">verify error: ' + escapeHTML(e.message) + '</span> <span class="brand-meta">(SubtleCrypto Ed25519 requires Chrome 113+, Firefox 130+, Safari 17+)</span>';
+    }
+  }
+
+  function hexToBytes(hex) {
+    const b = new Uint8Array(hex.length / 2);
+    for (let i = 0; i < b.length; i++) b[i] = parseInt(hex.substr(i*2, 2), 16);
+    return b;
+  }
+  function base64ToBytes(b64) {
+    const bin = atob(b64);
+    const b = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i);
+    return b;
+  }
+
+  document.getElementById("refresh").addEventListener("click", loadList);
+  document.getElementById("filter").addEventListener("keydown", e => { if (e.key === "Enter") loadList(); });
+  loadList();
+</script>
+</body>
+</html>

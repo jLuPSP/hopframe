@@ -1,0 +1,245 @@
+category: credential-exfiltration
+rules:
+  - id: ce.core.aws_access_key
+    description: AWS access key id pattern.
+    severity: critical
+    mode: block
+    fields:
+      - "params.**"
+      - "result.**"
+    case_sensitive: true
+    patterns:
+      - '\b(?:AKIA|ASIA)[0-9A-Z]{16}\b'
+
+  - id: ce.core.aws_secret_key
+    description: AWS secret access key heuristic (label + 40-char base64).
+    severity: critical
+    mode: block
+    fields:
+      - "params.**"
+      - "result.**"
+    patterns:
+      - 'aws_secret_access_key\s*[:=]\s*["'']?[A-Za-z0-9/+]{40}["'']?'
+
+  - id: ce.core.gcp_service_account_key
+    description: GCP service account JSON key heuristic.
+    severity: critical
+    mode: block
+    fields:
+      - "params.**"
+      - "result.**"
+    patterns:
+      - '"type"\s*:\s*"service_account"[\s\S]{0,200}"private_key"\s*:\s*"-----BEGIN PRIVATE KEY-----'
+
+  - id: ce.core.private_key_pem
+    description: PEM-encoded private key in any field.
+    severity: critical
+    mode: block
+    fields:
+      - "params.**"
+      - "result.**"
+    patterns:
+      - '-----BEGIN (?:RSA |EC |DSA |OPENSSH |PGP |ENCRYPTED )?PRIVATE KEY-----'
+
+  - id: ce.core.github_token
+    description: GitHub fine-grained or classic token.
+    severity: high
+    mode: block
+    fields:
+      - "params.**"
+      - "result.**"
+    case_sensitive: true
+    patterns:
+      - '\bgh[pousr]_[A-Za-z0-9]{20,255}\b'
+      - '\bgithub_pat_[A-Za-z0-9_]{82,}\b'
+
+  - id: ce.core.slack_token
+    description: Slack bot, user, or app token.
+    severity: high
+    mode: block
+    fields:
+      - "params.**"
+      - "result.**"
+    case_sensitive: true
+    patterns:
+      - '\bxox[abprs]-[0-9]{10,15}-[0-9]{10,15}-[A-Za-z0-9]{20,40}\b'
+
+  - id: ce.core.openai_api_key
+    description: OpenAI API key.
+    severity: high
+    mode: block
+    fields:
+      - "params.**"
+      - "result.**"
+    case_sensitive: true
+    patterns:
+      - '\bsk-(?:proj-)?[A-Za-z0-9_-]{20,200}\b'
+
+  - id: ce.core.anthropic_api_key
+    description: Anthropic API key.
+    severity: high
+    mode: block
+    fields:
+      - "params.**"
+      - "result.**"
+    case_sensitive: true
+    patterns:
+      - '\bsk-ant-[A-Za-z0-9_-]{40,200}\b'
+
+  - id: ce.core.generic_bearer
+    description: Bearer-token style header value carried in arguments.
+    severity: medium
+    mode: warn
+    fields:
+      - "params.**"
+      - "result.**"
+    patterns:
+      - 'Authorization\s*:\s*Bearer\s+[A-Za-z0-9._\-]{16,}'
+
+  - id: ce.core.slack_webhook_url
+    description: Slack incoming-webhook URL, leaking this lets an attacker post into channels.
+    severity: high
+    mode: warn
+    fields:
+      - "params.**"
+      - "result.**"
+    case_sensitive: true
+    patterns:
+      - 'https://hooks\.slack\.com/services/T[A-Z0-9]+/B[A-Z0-9]+/[A-Za-z0-9]{10,40}'
+
+  - id: ce.core.outbound_exfil_url
+    description: |
+      Tool argument requests a fetch to a suspicious destination with
+      embedded credential-like material in the query string.
+    severity: high
+    mode: warn
+    targets:
+      - tools/call
+    fields:
+      - "params.arguments.**"
+    patterns:
+      - 'https?://[^\s"]{1,200}[?&](?:token|api_key|apikey|secret|password|auth)=[^\s&"]{6,}'
+
+  - id: ce.core.azure_storage_key
+    description: Azure Storage account key (88-char base64 with trailing ==).
+    severity: critical
+    mode: block
+    fields:
+      - "params.**"
+      - "result.**"
+    case_sensitive: true
+    confidence: 0.92
+    patterns:
+      - 'AccountKey\s*=\s*[A-Za-z0-9+/]{86}==[^A-Za-z0-9+/=]'
+      - 'DefaultEndpointsProtocol=https?;[^;]*AccountKey=[A-Za-z0-9+/]{86}=='
+
+  - id: ce.core.gcp_api_key
+    description: GCP API key (39-char alphanumeric).
+    severity: high
+    mode: block
+    fields:
+      - "params.**"
+      - "result.**"
+    case_sensitive: true
+    confidence: 0.85
+    patterns:
+      - '\bAIza[0-9A-Za-z_\-]{35}\b'
+
+  - id: ce.core.stripe_secret_key
+    description: Stripe secret API key.
+    severity: critical
+    mode: block
+    fields:
+      - "params.**"
+      - "result.**"
+    case_sensitive: true
+    confidence: 0.97
+    patterns:
+      - '\b(?:sk|rk)_live_[A-Za-z0-9]{24,}'
+      - '\bsk_test_[A-Za-z0-9]{24,}'
+
+  - id: ce.core.twilio_token
+    description: Twilio auth token or API SID.
+    severity: high
+    mode: block
+    fields:
+      - "params.**"
+      - "result.**"
+    case_sensitive: true
+    confidence: 0.9
+    patterns:
+      - '\bSK[a-f0-9]{32}\b'
+      - '\bAC[a-f0-9]{32}\b'
+
+  - id: ce.core.npm_token
+    description: npm publish token.
+    severity: high
+    mode: block
+    fields:
+      - "params.**"
+      - "result.**"
+    case_sensitive: true
+    confidence: 0.95
+    patterns:
+      - '\bnpm_[A-Za-z0-9]{36,}\b'
+
+  - id: ce.core.jwt_token
+    description: |
+      Bearer-style JWT (eyJ-prefixed three-part base64). Often
+      indicates credentials in transit when found in tool args.
+    severity: medium
+    mode: warn
+    fields:
+      - "params.**"
+      - "result.**"
+    case_sensitive: true
+    confidence: 0.7
+    patterns:
+      - '\beyJ[A-Za-z0-9_\-]{10,}\.eyJ[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,}\b'
+
+  - id: ce.core.discord_bot_token
+    description: Discord bot token.
+    severity: high
+    mode: block
+    fields:
+      - "params.**"
+      - "result.**"
+    case_sensitive: true
+    confidence: 0.9
+    patterns:
+      - '\b[MNO][A-Za-z0-9_\-]{23}\.[A-Za-z0-9_\-]{6}\.[A-Za-z0-9_\-]{27,38}\b'
+
+  - id: ce.core.cloudflare_api_token
+    description: Cloudflare API token.
+    severity: high
+    mode: block
+    fields:
+      - "params.**"
+      - "result.**"
+    case_sensitive: true
+    confidence: 0.85
+    patterns:
+      - '\bcf_[A-Za-z0-9]{40,}\b'
+
+  - id: ce.core.heroku_api_key
+    description: Heroku API key (uuid-shape with heroku marker).
+    severity: high
+    mode: warn
+    fields:
+      - "params.**"
+      - "result.**"
+    confidence: 0.7
+    patterns:
+      - 'heroku[\s_\-]?(?:api[\s_\-]?key|token)[\s:=]+[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+
+  - id: ce.core.sendgrid_api_key
+    description: SendGrid API key.
+    severity: high
+    mode: block
+    fields:
+      - "params.**"
+      - "result.**"
+    case_sensitive: true
+    confidence: 0.95
+    patterns:
+      - '\bSG\.[A-Za-z0-9_\-]{22}\.[A-Za-z0-9_\-]{43}\b'

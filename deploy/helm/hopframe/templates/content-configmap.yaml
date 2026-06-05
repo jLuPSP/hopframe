@@ -1,0 +1,19 @@
+{{- if and .Values.mcpSensor.enabled .Values.content.bundled -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "hopframe.mcpSensor.name" . }}-content
+  labels:
+    {{- include "hopframe.labels" . | nindent 4 }}
+data:
+  # Operators replace this ConfigMap to ship custom rules.
+  # Each key maps to a YAML rule pack inside /etc/hopframe/content.
+  # The bundled set covers prompt-injection, tool-poisoning,
+  # credential-exfiltration, pii-leakage, policy, and a2a-card.
+  README.md: |
+    Replace this ConfigMap to override the bundled rule packs.
+    The chart ships with a placeholder; production deployments
+    should mount their curated content. See
+    https://github.com/jLuPSP/hopframe/tree/main/content
+    for the upstream packs.
+{{- end }}

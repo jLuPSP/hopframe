@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hopframe"
+version = "0.1.0"
+description = "Hopframe, Python SDK for emitting agent traffic events from LangChain, LangGraph, OpenAI Assistants, and other frameworks."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "BSL-1.1" }
+authors = [
+  { name = "Jordan Lu" },
+]
+maintainers = [
+  { name = "Jordan Lu" },
+]
+keywords = ["agent", "security", "mcp", "a2a", "langchain", "langgraph", "observability"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Intended Audience :: System Administrators",
+  "Topic :: Security",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+]
+# Dependency-free at the base layer. Framework integrations import
+# their own deps lazily and raise a friendly error on missing imports.
+dependencies = []
+
+[project.optional-dependencies]
+langchain = ["langchain>=0.1"]
+openai = ["openai>=1.0"]
+test = ["pytest>=7.0"]
+
+[project.urls]
+Homepage = "https://github.com/jLuPSP/hopframe"
+Source = "https://github.com/jLuPSP/hopframe"
+Issues = "https://github.com/jLuPSP/hopframe/issues"
+
+[tool.setuptools.packages.find]
+include = ["hopframe*"]

@@ -1,0 +1,38 @@
+Business Source License 1.1
+
+Parameters
+
+  Licensor:           Jordan Lu
+  Licensed Work:      Hopframe (https://github.com/jLuPSP/hopframe)
+                      Copyright (c) 2026 Jordan Lu. All rights reserved.
+  Additional Use Grant: None.
+  Change Date:        Three (3) years after each release publication date.
+  Change License:     Apache License, Version 2.0
+
+For the full Business Source License 1.1 terms, see:
+
+  https://mariadb.com/bsl11
+
+Notice
+
+  The Business Source License is not an Open Source license, however,
+  the Licensed Work will eventually be made available under an Open
+  Source License, as stated in this License.
+
+  Each licensee is granted a non-exclusive, worldwide, royalty-free
+  right to copy, modify, create derivative works of, redistribute, and
+  make non-production use of the Licensed Work. Production use of the
+  Licensed Work is permitted, subject to the terms below, with the
+  exception of competing managed services.
+
+  A "competing managed service" means offering Hopframe (or a
+  derivative work) as a hosted, paid product to third parties. This
+  restriction expires on the Change Date and the Licensed Work
+  becomes available under the Change License (Apache 2.0) on that
+  date.
+
+  TO THE EXTENT PERMITTED BY APPLICABLE LAW, THE LICENSED WORK IS
+  PROVIDED ON AN "AS IS" BASIS. LICENSOR HEREBY DISCLAIMS ALL
+  WARRANTIES AND CONDITIONS, EXPRESS OR IMPLIED, INCLUDING (WITHOUT
+  LIMITATION) WARRANTIES OF MERCHANTABILITY, NON-INFRINGEMENT, AND
+  FITNESS FOR A PARTICULAR PURPOSE.

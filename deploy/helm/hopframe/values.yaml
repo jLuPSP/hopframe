@@ -1,0 +1,122 @@
+# Default values for the Hopframe Helm chart.
+# Override per-environment via -f values-prod.yaml.
+
+image:
+  repository: ghcr.io/jlupsp/hopframe
+  pullPolicy: IfNotPresent
+  # tag defaults to .Chart.AppVersion when empty.
+  tag: ""
+
+controlPlane:
+  enabled: true
+  replicas: 1
+  service:
+    type: ClusterIP
+    port: 7090
+  retention: 90d
+  rotateEvery: 1h
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClass: ""
+
+  # Bearer token for sensors / API clients. If left empty, no global token
+  # is set and you must mint per-tenant or per-role tokens (below) or rely
+  # on local users + API tokens minted via the API.
+  auth:
+    token: ""
+    # Comma-separated list of tenantID:token pairs.
+    tenantTokens: ""
+    # Comma-separated list of role:token pairs (viewer/editor/admin/owner).
+    roleTokens: ""
+    # Path inside the data volume for the JSON file holding hashed users.
+    # Empty disables file-backed users (env-bound tokens still work).
+    usersPath: "/var/lib/hopframe/users.json"
+    # username:password seeded only on first start.
+    bootstrapAdmin: ""
+    # Path inside the data volume for the JSON file holding API tokens.
+    tokensPath: "/var/lib/hopframe/tokens.json"
+
+  # Persistent Ed25519 signing seed. Must be 64 hex chars (32 bytes). When
+  # empty a fresh in-memory key is generated on every boot, breaking
+  # verification of any previously exported bundle. Set this for any
+  # deployment that needs verifiable exports.
+  signingKey: ""
+
+  # Audit-chain backend. Empty (default) uses the file-backed NDJSON
+  # log on the persistent volume. Set to a Postgres DSN to use the
+  # Postgres backend; compatible with Cloud SQL, AWS RDS for
+  # PostgreSQL, Azure Database for PostgreSQL, Aiven, Neon, Supabase,
+  # or self-hosted Postgres 14+. Example:
+  #   storeDSN: postgres://hopframe:secret@cloud-sql:5432/hopframe?sslmode=require
+  storeDSN: ""
+
+  # Path inside the data volume to persist policies. Empty disables.
+  policyPath: "/var/lib/hopframe/policies.json"
+  # Root directory of detection content packs (read-only mount or baked in).
+  contentRoot: ""
+  # Path inside the data volume for the sensor fleet view.
+  sensorFleetPath: "/var/lib/hopframe/sensors.json"
+
+  # Per-IP rate limit applied to /v1/* writes. 0 disables.
+  rateLimitRps: 0
+
+  # Sigstore Rekor URL for chain-head anchors. Empty disables.
+  rekorUrl: ""
+
+  # OIDC SSO. All four must be set to enable.
+  oidc:
+    issuer: ""
+    audience: ""
+    clientId: ""
+    clientSecret: ""
+
+  webhook:
+    url: ""
+    secret: ""
+    minSeverity: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+mcpSensor:
+  enabled: true
+  replicas: 2
+  service:
+    type: ClusterIP
+    port: 7080
+  upstream:
+    url: ""  # required: URL of the MCP server to forward to
+  failOpen: true
+  spool:
+    enabled: true
+    size: 1Gi
+    storageClass: ""
+  # Bearer token used by the sensor when emitting events to the control
+  # plane. Required when the control plane has any auth configured;
+  # ignored when the control plane is open.
+  controlPlaneToken: ""
+  # Layer 3 LLM judge. Optional. Speaks the OpenAI Chat Completions wire
+  # format so OpenAI / Anthropic-compat / Ollama / vLLM / LiteLLM all
+  # work as backends. The judge runs only on the uncertain band of
+  # detection output.
+  llmJudge:
+    url: ""
+    apiKey: ""
+    model: ""
+  resources:
+    requests:
+      cpu: 200m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+content:
+  # When true, mounts the chart's bundled detection content.
+  # Set false to mount your own ConfigMap.
+  bundled: true

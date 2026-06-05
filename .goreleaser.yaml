@@ -1,0 +1,287 @@
+# Hopframe release configuration.
+#
+# Run locally with `goreleaser release --snapshot --clean` to verify a tag
+# build without publishing. The release workflow in
+# .github/workflows/release.yaml drives the real release on tag push.
+
+version: 2
+
+project_name: hopframe
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: control-plane
+    main: ./cmd/control-plane
+    binary: control-plane
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+  - id: mcp-sensor
+    main: ./cmd/mcp-sensor
+    binary: mcp-sensor
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+  - id: mcp-stdio-sensor
+    main: ./cmd/mcp-stdio-sensor
+    binary: mcp-stdio-sensor
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+  - id: a2a-sensor
+    main: ./cmd/a2a-sensor
+    binary: a2a-sensor
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+  - id: hopframe-bench
+    main: ./cmd/hopframe-bench
+    binary: hopframe-bench
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+  - id: dumb-proxy
+    main: ./cmd/dumb-proxy
+    binary: dumb-proxy
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+  - id: hopframe-export
+    main: ./cmd/hopframe-export
+    binary: hopframe-export
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+  - id: hopframe
+    main: ./cmd/hopframe
+    binary: hopframe
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+archives:
+  - id: hopframe
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    formats: ["tar.gz"]
+    format_overrides:
+      - goos: windows
+        formats: ["zip"]
+    files:
+      - LICENSE
+      - README.md
+      - CHANGELOG.md
+      - SECURITY.md
+      - src: examples/config/*
+        dst: examples/config
+      - src: content/**/*
+        dst: content
+      - src: bench/corpus/v1.jsonl
+        dst: bench/corpus
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+sboms:
+  - id: archive
+    artifacts: archive
+    documents:
+      - "{{ .ArtifactName }}.sbom.json"
+
+signs:
+  - id: cosign-checksums
+    cmd: cosign
+    args:
+      - sign-blob
+      - --yes
+      - --output-signature=${signature}
+      - --output-certificate=${certificate}
+      - ${artifact}
+    artifacts: checksum
+    output: true
+    certificate: "${artifact}.pem"
+
+# Container images are NOT built by goreleaser anymore. The
+# Dockerfile at repo root is multi-stage (compiles from source) so
+# any user can run `docker build .` without Go installed. CI
+# publishes that same Dockerfile via docker/build-push-action in
+# .github/workflows/release.yaml after goreleaser finishes binaries.
+# One source of truth, no goreleaser/buildx duplication.
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "Merge pull request"
+      - "Merge branch"
+
+release:
+  github:
+    owner: jLuPSP
+    name: hopframe
+  draft: true
+  prerelease: auto
+  name_template: "v{{ .Version }}"
+  header: |
+    Hopframe {{ .Tag }}.
+
+    See [CHANGELOG.md](https://github.com/jLuPSP/hopframe/blob/main/CHANGELOG.md) for the full list of changes.
+  footer: |
+    Container images are published separately to ghcr.io/jlupsp/hopframe.
+
+    Verify a downloaded artifact:
+
+    ```
+    cosign verify-blob \
+      --certificate-identity-regexp '^https://github\.com/jLuPSP/hopframe/' \
+      --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+      --signature checksums.txt.sig \
+      --certificate checksums.txt.pem \
+      checksums.txt
+    ```

@@ -1,0 +1,219 @@
+{{- if .Values.controlPlane.enabled -}}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "hopframe.controlPlane.name" . }}
+  labels:
+    {{- include "hopframe.labels" . | nindent 4 }}
+    app.kubernetes.io/component: control-plane
+spec:
+  replicas: {{ .Values.controlPlane.replicas }}
+  serviceName: {{ include "hopframe.controlPlane.name" . }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Chart.Name }}
+      app.kubernetes.io/component: control-plane
+  template:
+    metadata:
+      labels:
+        {{- include "hopframe.labels" . | nindent 8 }}
+        app.kubernetes.io/component: control-plane
+    spec:
+      containers:
+        - name: control-plane
+          image: {{ include "hopframe.imageRef" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["/usr/local/bin/control-plane"]
+          args:
+            - "--addr=:{{ .Values.controlPlane.service.port }}"
+            - "--log=/var/lib/hopframe/events.ndjson"
+            - "--retention={{ .Values.controlPlane.retention }}"
+            - "--rotate-every={{ .Values.controlPlane.rotateEvery }}"
+          env:
+            {{- with .Values.controlPlane.auth.token }}
+            - name: HOPFRAME_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "hopframe.controlPlane.name" $ }}-auth
+                  key: token
+            {{- end }}
+            {{- with .Values.controlPlane.auth.tenantTokens }}
+            - name: HOPFRAME_TENANT_TOKENS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "hopframe.controlPlane.name" $ }}-auth
+                  key: tenantTokens
+            {{- end }}
+            {{- with .Values.controlPlane.auth.roleTokens }}
+            - name: HOPFRAME_ROLE_TOKENS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "hopframe.controlPlane.name" $ }}-auth
+                  key: roleTokens
+            {{- end }}
+            {{- with .Values.controlPlane.auth.usersPath }}
+            - name: HOPFRAME_USERS_PATH
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.controlPlane.auth.bootstrapAdmin }}
+            - name: HOPFRAME_BOOTSTRAP_ADMIN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "hopframe.controlPlane.name" $ }}-auth
+                  key: bootstrapAdmin
+            {{- end }}
+            {{- with .Values.controlPlane.auth.tokensPath }}
+            - name: HOPFRAME_TOKENS_PATH
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.controlPlane.signingKey }}
+            - name: HOPFRAME_SIGNING_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "hopframe.controlPlane.name" $ }}-auth
+                  key: signingKey
+            {{- end }}
+            {{- with .Values.controlPlane.storeDSN }}
+            - name: HOPFRAME_STORE_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "hopframe.controlPlane.name" $ }}-auth
+                  key: storeDSN
+            {{- end }}
+            {{- with .Values.controlPlane.policyPath }}
+            - name: HOPFRAME_POLICY_PATH
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.controlPlane.contentRoot }}
+            - name: HOPFRAME_CONTENT_ROOT
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.controlPlane.sensorFleetPath }}
+            - name: HOPFRAME_SENSOR_FLEET
+              value: {{ . | quote }}
+            {{- end }}
+            {{- if .Values.controlPlane.rateLimitRps }}
+            - name: HOPFRAME_RATE_LIMIT_RPS
+              value: {{ .Values.controlPlane.rateLimitRps | quote }}
+            {{- end }}
+            {{- with .Values.controlPlane.rekorUrl }}
+            - name: HOPFRAME_REKOR_URL
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.controlPlane.oidc.issuer }}
+            - name: HOPFRAME_OIDC_ISSUER
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.controlPlane.oidc.audience }}
+            - name: HOPFRAME_OIDC_AUDIENCE
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.controlPlane.oidc.clientId }}
+            - name: HOPFRAME_OIDC_CLIENT_ID
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.controlPlane.oidc.clientSecret }}
+            - name: HOPFRAME_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "hopframe.controlPlane.name" $ }}-auth
+                  key: oidcClientSecret
+            {{- end }}
+            {{- with .Values.controlPlane.webhook.url }}
+            - name: HOPFRAME_WEBHOOK_URL
+              value: {{ . | quote }}
+            {{- end }}
+            {{- with .Values.controlPlane.webhook.secret }}
+            - name: HOPFRAME_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "hopframe.controlPlane.name" $ }}-webhook
+                  key: secret
+            {{- end }}
+            {{- with .Values.controlPlane.webhook.minSeverity }}
+            - name: HOPFRAME_WEBHOOK_MIN_SEVERITY
+              value: {{ . | quote }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.controlPlane.service.port }}
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            initialDelaySeconds: 5
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/hopframe
+          resources:
+            {{- toYaml .Values.controlPlane.resources | nindent 12 }}
+  {{- if .Values.controlPlane.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: {{ .Values.controlPlane.persistence.size }}
+        {{- with .Values.controlPlane.persistence.storageClass }}
+        storageClassName: {{ . }}
+        {{- end }}
+  {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "hopframe.controlPlane.name" . }}
+  labels:
+    {{- include "hopframe.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.controlPlane.service.type }}
+  selector:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/component: control-plane
+  ports:
+    - name: http
+      port: {{ .Values.controlPlane.service.port }}
+      targetPort: http
+{{- if .Values.controlPlane.webhook.secret }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "hopframe.controlPlane.name" . }}-webhook
+type: Opaque
+stringData:
+  secret: {{ .Values.controlPlane.webhook.secret | quote }}
+{{- end }}
+{{- if or .Values.controlPlane.auth.token .Values.controlPlane.auth.tenantTokens .Values.controlPlane.auth.roleTokens .Values.controlPlane.auth.bootstrapAdmin .Values.controlPlane.signingKey .Values.controlPlane.oidc.clientSecret .Values.controlPlane.storeDSN }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "hopframe.controlPlane.name" . }}-auth
+type: Opaque
+stringData:
+  {{- with .Values.controlPlane.auth.token }}
+  token: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.controlPlane.auth.tenantTokens }}
+  tenantTokens: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.controlPlane.auth.roleTokens }}
+  roleTokens: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.controlPlane.auth.bootstrapAdmin }}
+  bootstrapAdmin: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.controlPlane.signingKey }}
+  signingKey: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.controlPlane.storeDSN }}
+  storeDSN: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.controlPlane.oidc.clientSecret }}
+  oidcClientSecret: {{ . | quote }}
+  {{- end }}
+{{- end }}
+{{- end }}

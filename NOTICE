@@ -1,0 +1,49 @@
+Hopframe
+Copyright (c) 2026 Jordan Lu. All rights reserved.
+
+This product includes software developed by Jordan Lu
+(https://github.com/jLuPSP).
+
+Hopframe ships under two licenses, applied to different directories:
+
+  - The repository as a whole is licensed under the Business Source
+    License 1.1 (see /LICENSE). On the Change Date (three years after
+    each release publication), the licensed code becomes available
+    under Apache License, Version 2.0.
+
+  - The detection content under /content/ AND the benchmark corpus
+    under /bench/corpus/ are licensed under Apache License, Version
+    2.0 today (see content/LICENSE and bench/corpus/LICENSE). This
+    is so the rule pack and corpus can be freely incorporated into
+    other security tools, research papers, and detection benchmarks
+    under an OSI-approved license.
+
+  Contributions to /content/ and /bench/corpus/ are accepted under
+  Apache 2.0; contributions to the rest of the repository are
+  accepted under BSL 1.1 (and convert to Apache 2.0 with the rest
+  of the code on each release's Change Date).
+
+Trademarks
+
+  "Hopframe" and the Hopframe logo are marks of Jordan Lu.
+  Use of these marks is permitted for unmodified, attributed
+  redistribution of the Licensed Work. Forks, derivative works, and
+  third-party services must use a different name and mark.
+
+Third-party acknowledgements
+
+  Hopframe builds on and interoperates with several open standards and
+  open-source projects, including:
+
+  - Model Context Protocol (https://modelcontextprotocol.io/)
+  - Agent2Agent Protocol (https://a2aproject.github.io/A2A/)
+  - Sigstore Rekor (https://www.sigstore.dev/)
+  - LangChain, LangGraph, CrewAI, OpenAI Assistants APIs
+
+  Hopframe's detection-content format and contribution model are
+  inspired by Snort, YARA, and OWASP rule traditions.
+
+Contact
+
+  Security disclosures:    https://github.com/jLuPSP/hopframe/security/advisories/new
+  General:                 https://github.com/jLuPSP/hopframe/issues

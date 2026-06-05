@@ -1,0 +1,86 @@
+category: policy
+rules:
+  - id: po.core.unregistered_tool_call
+    description: |
+      A tools/call argument names a tool from a deny-list. The default
+      list is empty; operators populate this rule via a custom pack.
+    severity: medium
+    mode: monitor
+    targets:
+      - tools/call
+    fields:
+      - "params.name"
+    patterns:
+      # Placeholder pattern that matches nothing by default. Operators
+      # override this rule in their own pack with concrete tool names.
+      - '\A__hopframe_never_match__\z'
+
+  - id: po.core.shell_exec_request
+    description: Tool call name suggests arbitrary shell execution.
+    severity: high
+    mode: warn
+    targets:
+      - tools/call
+    fields:
+      - "params.name"
+    patterns:
+      - '^(?:exec|shell|run|bash|sh|cmd|powershell|system)$'
+
+  - id: po.core.filesystem_root_path
+    description: Tool argument references a sensitive root-level path.
+    severity: medium
+    mode: warn
+    targets:
+      - tools/call
+    fields:
+      - "params.arguments.**"
+    case_sensitive: true
+    patterns:
+      - '(?:^|["''\s=])(?:/etc/(?:passwd|shadow|sudoers)|/root/\.ssh/|~/\.ssh/id_)'
+
+  - id: po.core.shell_metacharacters
+    description: |
+      Tool argument contains shell metacharacters that suggest
+      command injection. Heuristic, operators tune per tool.
+    severity: medium
+    mode: warn
+    targets:
+      - tools/call
+    fields:
+      - "params.arguments.**"
+    confidence: 0.55
+    patterns:
+      - '\$\([^)]+\)'
+      - '`[^`]+`'
+      - ';\s*(?:rm|cat|wget|curl|nc|sh|bash|powershell)\s'
+      - '\|\s*(?:rm|cat|wget|curl|nc|sh|bash|powershell)\s'
+
+  - id: po.core.path_traversal
+    description: Tool argument contains path-traversal sequences.
+    severity: medium
+    mode: warn
+    targets:
+      - tools/call
+    fields:
+      - "params.arguments.**"
+    confidence: 0.7
+    patterns:
+      - '(?:\.\./){3,}'
+      - '\.\.\\(?:\.\.\\){2,}'
+      - '%2e%2e%2f'
+
+  - id: po.core.sql_injection_marker
+    description: |
+      Tool argument contains SQL-injection-shaped tokens. Doesn't
+      mean injection succeeded, just that the value looks risky.
+    severity: medium
+    mode: warn
+    targets:
+      - tools/call
+    fields:
+      - "params.arguments.**"
+    confidence: 0.5
+    patterns:
+      - "(?:'|\")(?:\\s)*(?:OR|AND)\\s+(?:'|\")?\\d+(?:'|\")?\\s*=\\s*(?:'|\")?\\d+"
+      - 'UNION\s+(?:ALL\s+)?SELECT\s+'
+      - ';\s*DROP\s+(?:TABLE|DATABASE)\s+'

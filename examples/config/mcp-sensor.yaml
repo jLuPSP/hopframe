@@ -1,0 +1,23 @@
+sensor:
+  id: mcp-sensor-dev
+  tenant_id: dev
+
+upstream:
+  url: http://127.0.0.1:8088
+  timeout: 30s
+
+listen:
+  address: ":7080"
+  base_path: /mcp
+
+rules:
+  dirs:
+    - content
+  disabled_rules: []
+
+emitter:
+  sink: stdout
+  buffer_size: 2048
+
+policy:
+  fail_open: true

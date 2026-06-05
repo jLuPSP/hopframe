@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Hopframe, agent traffic security mesh</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0a0c10;
+    --bg-2: #0e1118;
+    --panel: #141821;
+    --panel-2: #1a1f2a;
+    --border: #232936;
+    --border-2: #2c3344;
+    --text: #e6e8ee;
+    --text-2: #a8aebd;
+    --muted: #6e7689;
+    --accent: #5aa8ff;
+    --accent-dim: rgba(90, 168, 255, 0.18);
+    --green: #4cd9a4;
+    --green-dim: rgba(76, 217, 164, 0.13);
+    --yellow: #f3c94f;
+    --yellow-dim: rgba(243, 201, 79, 0.12);
+    --red: #f0606b;
+    --red-dim: rgba(240, 96, 107, 0.13);
+    --orange: #f0884b;
+    --orange-dim: rgba(240, 136, 75, 0.12);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /*, top bar, */
+  header.topbar {
+    height: 44px;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    background: var(--bg-2);
+  }
+  .brand { font-size: 13px; letter-spacing: 0.4px; font-weight: 600; }
+  .brand .h { color: var(--accent); }
+  .brand-meta { color: var(--muted); font-size: 11px; margin-left: 4px; }
+  .topbar .spacer { flex: 1; }
+  .topbar .stat { color: var(--muted); font-size: 11px; }
+  .topbar .stat b { color: var(--text); font-weight: 500; }
+  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 999px; background: var(--muted); margin-right: 5px; vertical-align: middle; }
+  .dot.live { background: var(--green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+  button.btn, .btn {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-family: inherit;
+    font-size: 11.5px;
+    cursor: pointer;
+    transition: border-color 120ms, background 120ms;
+  }
+  button.btn:hover, a.btn:hover { border-color: var(--accent); background: var(--panel); }
+  button.btn.primary { border-color: var(--accent); color: var(--accent); }
+  button.btn.primary:hover { background: var(--accent-dim); }
+  a.btn { text-decoration: none; display: inline-block; }
+  .trust {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid;
+    font-size: 11px;
+    letter-spacing: 0.3px;
+    background: var(--green-dim);
+    color: var(--green);
+    border-color: rgba(76, 217, 164, 0.3);
+    cursor: help;
+  }
+  .trust.broken {
+    background: var(--red-dim);
+    color: var(--red);
+    border-color: rgba(240, 96, 107, 0.4);
+  }
+  .trust.checking {
+    background: var(--panel);
+    color: var(--text-2);
+    border-color: var(--border);
+  }
+  .trust svg { display: block; }
+
+  /*, metrics + histogram, */
+  .strip {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr)) 2.6fr;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-2);
+  }
+  .strip > div {
+    padding: 10px 14px;
+    border-right: 1px solid var(--border);
+  }
+  .strip > div:last-child { border-right: 0; }
+  .metric .label {
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: var(--muted);
+  }
+  .metric .value {
+    font-size: 22px;
+    font-weight: 500;
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+  .metric .delta { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .hist { padding: 6px 12px 8px; display: flex; flex-direction: column; }
+  .hist .label {
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: var(--muted);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .hist .legend { font-size: 9.5px; }
+  .hist .legend span { margin-left: 10px; }
+  .hist .legend .lg { color: var(--green); }
+  .hist .legend .lw { color: var(--yellow); }
+  .hist .legend .lb { color: var(--red); }
+  .hist svg { flex: 1; width: 100%; min-height: 56px; }
+
+  /*, toolbar (time + filters + export), */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel);
+    flex-wrap: wrap;
+  }
+  .toolbar .group {
+    display: flex; align-items: center; gap: 0;
+    border: 1px solid var(--border); border-radius: 4px; overflow: hidden;
+    background: var(--bg);
+  }
+  .toolbar .group .seg {
+    padding: 4px 10px;
+    font-size: 11px;
+    color: var(--text-2);
+    cursor: pointer;
+    border-right: 1px solid var(--border);
+    user-select: none;
+  }
+  .toolbar .group .seg:last-child { border-right: 0; }
+  .toolbar .group .seg:hover { background: var(--panel); color: var(--text); }
+  .toolbar .group .seg.active { background: var(--accent-dim); color: var(--accent); }
+  .toolbar select, .toolbar input {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-family: inherit;
+    font-size: 11.5px;
+  }
+  .toolbar input { width: 240px; }
+  .toolbar input::placeholder { color: var(--muted); }
+  .toolbar .right { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+  .toolbar .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px 2px 8px;
+    background: var(--accent-dim);
+    color: var(--accent);
+    border-radius: 999px;
+    font-size: 10.5px;
+  }
+  .chip button {
+    background: transparent;
+    border: 0;
+    color: inherit;
+    cursor: pointer;
+    font-size: 11px;
+    padding: 0 0 0 2px;
+    opacity: 0.7;
+  }
+  .chip button:hover { opacity: 1; }
+
+  /*, layout, */
+  .layout {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    height: calc(100vh - 44px - 76px - 41px); /* topbar + strip + toolbar */
+  }
+  .stream { overflow: auto; background: var(--bg-2); }
+  aside.panel {
+    border-left: 1px solid var(--border);
+    background: var(--panel);
+    overflow: auto;
+  }
+  aside.panel .section { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  aside.panel h2 {
+    font-size: 9.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--muted);
+    margin: 0 0 6px;
+    font-weight: 500;
+  }
+  aside.panel ul { list-style: none; padding: 0; margin: 0; }
+  aside.panel li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    font-size: 11.5px;
+  }
+  aside.panel li.clickable { cursor: pointer; padding-left: 2px; padding-right: 2px; border-radius: 3px; }
+  aside.panel li.clickable:hover { background: var(--accent-dim); }
+  aside.panel .num { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 10.5px; }
+  aside.panel .num.bad { color: var(--red); }
+  aside.panel .num.warn { color: var(--yellow); }
+  aside.panel .empty-line { color: var(--muted); font-size: 10.5px; padding: 3px 0; }
+
+  /*, events table, */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  thead th {
+    text-align: left;
+    color: var(--muted);
+    font-weight: 500;
+    background: var(--panel);
+    position: sticky; top: 0; z-index: 5;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+  tbody tr.row {
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background 120ms;
+  }
+  tbody tr.row:hover { background: var(--panel); }
+  tbody tr.row.expanded { background: var(--panel); }
+  tbody tr.row td {
+    padding: 6px 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 11.5px;
+    vertical-align: middle;
+  }
+  tbody tr.row.action-block td:first-child { box-shadow: inset 3px 0 0 var(--red); }
+  tbody tr.row.action-warn  td:first-child { box-shadow: inset 3px 0 0 var(--yellow); }
+  tbody tr.row.action-allow td:first-child { box-shadow: inset 3px 0 0 var(--green); }
+  tbody tr.detail td {
+    padding: 8px 14px 14px;
+    background: var(--panel-2);
+    border-bottom: 1px solid var(--border);
+  }
+  tbody tr.detail pre {
+    background: var(--bg);
+    color: var(--text-2);
+    padding: 12px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    overflow: auto;
+    margin: 0;
+    font-size: 11px;
+    line-height: 1.45;
+    max-height: 320px;
+  }
+  tbody tr.detail .meta {
+    display: flex; gap: 18px; flex-wrap: wrap;
+    font-size: 11px; color: var(--text-2);
+    margin-bottom: 8px;
+  }
+  tbody tr.detail .meta b { color: var(--text); font-weight: 500; }
+  tbody tr.detail .findings { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+  tbody tr.detail .find {
+    background: var(--bg); border: 1px solid var(--border-2); border-radius: 4px;
+    padding: 5px 8px; font-size: 10.5px; color: var(--text-2); cursor: pointer;
+  }
+  tbody tr.detail .find b { color: var(--text); }
+  tbody tr.detail .find:hover { border-color: var(--accent); }
+
+  /*, pills / badges, */
+  .pill {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    line-height: 1.7;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    cursor: pointer;
+  }
+  .pill.allow { background: var(--green-dim); color: var(--green); }
+  .pill.warn  { background: var(--yellow-dim); color: var(--yellow); }
+  .pill.block { background: var(--red-dim); color: var(--red); }
+  .pill.sev-critical { background: var(--red-dim); color: var(--red); }
+  .pill.sev-high     { background: var(--orange-dim); color: var(--orange); }
+  .pill.sev-medium   { background: var(--yellow-dim); color: var(--yellow); }
+  .pill.sev-low      { background: var(--accent-dim); color: var(--accent); }
+  .pill.sev-info     { background: var(--panel); color: var(--muted); }
+  .pill.proto-mcp { background: var(--accent-dim); color: var(--accent); }
+  .pill.proto-a2a { background: rgba(180, 140, 255, 0.13); color: #b48cff; }
+  .pill.proto-behavior { background: rgba(120, 200, 180, 0.13); color: #78c8b4; }
+  .clickable-field { cursor: pointer; }
+  .clickable-field:hover { color: var(--accent); }
+
+  .col-time { width: 88px; color: var(--muted); }
+  .col-action { width: 64px; }
+  .col-sev { width: 78px; }
+  .col-proto { width: 64px; }
+  .col-method { width: 110px; }
+  .col-peer { width: 130px; color: var(--text-2); }
+  .col-findings { color: var(--muted); font-size: 11px; }
+
+  .empty {
+    padding: 36px;
+    text-align: center;
+    color: var(--muted);
+  }
+
+  /*, modal (timeline), */
+  .modal-bg {
+    position: fixed; inset: 0;
+    background: rgba(8, 10, 14, 0.85);
+    display: none; align-items: center; justify-content: center;
+    z-index: 50;
+  }
+  .modal-bg.open { display: flex; }
+  .modal {
+    background: var(--panel);
+    border: 1px solid var(--border-2);
+    border-radius: 6px;
+    width: 92vw; max-width: 1200px;
+    max-height: 86vh;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .modal header {
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .modal header h2 { font-size: 12px; margin: 0; letter-spacing: 0.4px; font-weight: 500; }
+  .modal .body { overflow: auto; }
+  .modal .empty { padding: 28px; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand"><span id="liveDot" class="dot live"></span><span class="h">HOPFRAME</span><span class="brand-meta">live · v0.1</span></div>
+  <span class="stat">seq <b id="seq">-</b></span>
+  <span class="stat">head <b id="head">-</b></span>
+  <a href="/dashboard" class="btn audit-link" title="Operations overview with charts">dashboard</a>
+  <a href="/policies" class="btn audit-link" title="Edit policies (org/tenant/server scope)">policies</a>
+  <a href="/sensors" class="btn audit-link" title="Sensor fleet inventory">sensors</a>
+  <a href="/records" class="btn audit-link" title="Per-record signature and Merkle proof inspector">records</a>
+  <a href="/rules" class="btn audit-link" title="Browse the loaded detection rule pack">rules</a>
+  <a href="/settings" class="btn audit-link" title="Users, API tokens, and account settings">settings</a>
+  <span class="spacer"></span>
+  <a href="/audit" class="btn audit-link" title="Compliance-grade signed exports">
+    <svg width="11" height="13" viewBox="0 0 11 13" style="vertical-align: -1px; margin-right: 5px"><path d="M5.5 0.5 L10 2.5 V6.5 C10 9 8 11.5 5.5 12.5 C3 11.5 1 9 1 6.5 V2.5 Z" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M3.5 6.5 L4.8 7.8 L7.5 5" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>audit
+  </a>
+  <span class="trust" id="trustBadge" title="Cryptographic integrity check on the on-disk audit log. Runs continuously.">
+    <svg width="12" height="12" viewBox="0 0 12 12" id="trustIcon"><circle cx="6" cy="6" r="5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M3.5 6 L5.3 7.8 L8.5 4.2" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>
+    <span id="trustLabel">integrity</span>
+  </span>
+</header>
+
+<div id="welcomeBanner" style="display:none; padding: 14px 18px; border-bottom: 1px solid var(--border-2); background: linear-gradient(180deg, var(--panel) 0%, var(--bg-2) 100%);">
+  <div style="display: flex; align-items: flex-start; gap: 18px; max-width: 1180px; margin: 0 auto;">
+    <div style="flex: 1;">
+      <div style="font-size: 12.5px; font-weight: 600; color: var(--text); margin-bottom: 6px;">Welcome to Hopframe.</div>
+      <div style="font-size: 11.5px; color: var(--text-2); line-height: 1.55;">
+        This page is the live event stream. Below it: each event from the sensors is rendered as it lands on the audit chain. The four other tabs:
+        <a href="/dashboard" style="color: var(--accent); text-decoration: none;">/dashboard</a> for the operational overview,
+        <a href="/policies" style="color: var(--accent); text-decoration: none;">/policies</a> to author rules' dispositions,
+        <a href="/rules" style="color: var(--accent); text-decoration: none;">/rules</a> to browse the loaded detection content,
+        <a href="/records" style="color: var(--accent); text-decoration: none;">/records</a> to inspect a single record's signature and Merkle proof.
+        Send some traffic to <code style="background: var(--bg); padding: 1px 5px; border-radius: 3px;">http://127.0.0.1:7080/mcp</code> from another terminal, or run <code style="background: var(--bg); padding: 1px 5px; border-radius: 3px;">make demo</code> for a scripted attack story.
+      </div>
+    </div>
+    <button id="welcomeDismiss" class="btn" style="flex-shrink: 0; padding: 5px 12px;">Got it</button>
+  </div>
+</div>
+
+<div class="strip">
+  <div class="metric"><div class="label">events</div><div class="value" id="m-total">-</div></div>
+  <div class="metric"><div class="label">allowed</div><div class="value" id="m-allowed" style="color:var(--green)">-</div></div>
+  <div class="metric"><div class="label">warned</div><div class="value" id="m-warned" style="color:var(--yellow)">-</div></div>
+  <div class="metric"><div class="label">blocked</div><div class="value" id="m-blocked" style="color:var(--red)">-</div></div>
+  <div class="metric"><div class="label">findings</div><div class="value" id="m-findings">-</div></div>
+  <div class="metric"><div class="label">peers</div><div class="value" id="m-peers">-</div></div>
+  <div class="metric"><div class="label">runs</div><div class="value" id="m-runs">-</div></div>
+  <div class="hist">
+    <div class="label">
+      <span>activity timeline</span>
+      <span class="legend">
+        <span class="lg">▮ allow</span><span class="lw">▮ warn</span><span class="lb">▮ block</span>
+      </span>
+    </div>
+    <svg id="hist" viewBox="0 0 360 56" preserveAspectRatio="none"></svg>
+  </div>
+</div>
+
+<div class="toolbar">
+  <div class="group" id="rangeGroup">
+    <div class="seg" data-window="5m">5m</div>
+    <div class="seg active" data-window="15m">15m</div>
+    <div class="seg" data-window="1h">1h</div>
+    <div class="seg" data-window="6h">6h</div>
+    <div class="seg" data-window="24h">24h</div>
+  </div>
+  <div class="group" id="actionGroup">
+    <div class="seg active" data-action="">all</div>
+    <div class="seg" data-action="allow">allow</div>
+    <div class="seg" data-action="warn">warn</div>
+    <div class="seg" data-action="block">block</div>
+  </div>
+  <select id="minSeverity">
+    <option value="">severity ≥ any</option>
+    <option value="low">low</option>
+    <option value="medium">medium</option>
+    <option value="high">high</option>
+    <option value="critical">critical</option>
+  </select>
+  <input id="search" placeholder="search raw message…" />
+  <div class="chips" id="chips"></div>
+  <div class="right">
+    <button class="btn" id="clearBtn">clear filters</button>
+    <button class="btn primary" id="exportBtn">export ▾</button>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="stream">
+    <table>
+      <thead>
+        <tr>
+          <th class="col-time">time</th>
+          <th class="col-action">action</th>
+          <th class="col-sev">severity</th>
+          <th class="col-proto">proto</th>
+          <th class="col-method">method</th>
+          <th class="col-peer">counterparty</th>
+          <th class="col-findings">findings</th>
+        </tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div id="empty" class="empty">waiting for events…</div>
+  </div>
+
+  <aside class="panel">
+    <div class="section"><h2>tool risk</h2><ul id="toolRisk"><li class="empty-line">no calls yet</li></ul></div>
+    <div class="section"><h2>agent runs</h2><ul id="agentActivity"><li class="empty-line">no runs</li></ul></div>
+    <div class="section"><h2>counterparty risk</h2><ul id="counterparties"><li class="empty-line">no peers</li></ul></div>
+    <div class="section"><h2>finding categories</h2><ul id="categoryCounts"><li class="empty-line">no findings</li></ul></div>
+    <div class="section"><h2>task concerns</h2><ul id="taskConcerns"><li class="empty-line">no concerns</li></ul></div>
+  </aside>
+</div>
+
+<div id="modalBg" class="modal-bg" onclick="if (event.target.id === 'modalBg') closeModal()">
+  <div class="modal">
+    <header>
+      <h2 id="modalTitle">agent timeline</h2>
+      <button class="btn" onclick="closeModal()">close</button>
+    </header>
+    <div class="body">
+      <table>
+        <thead><tr>
+          <th class="col-time">time</th>
+          <th class="col-action">action</th>
+          <th class="col-sev">severity</th>
+          <th class="col-proto">proto</th>
+          <th class="col-method">method</th>
+          <th>direction</th>
+          <th class="col-findings">findings</th>
+        </tr></thead>
+        <tbody id="timelineRows"></tbody>
+      </table>
+      <div id="timelineEmpty" class="empty">no events for this run</div>
+    </div>
+  </div>
+</div>
+
+<div id="exportMenu" style="display:none; position:fixed; z-index:60; background:var(--panel); border:1px solid var(--border-2); border-radius:4px; min-width:200px; box-shadow: 0 6px 24px rgba(0,0,0,0.4);">
+  <div class="exp-item" data-fmt="ndjson" style="padding:8px 12px; cursor:pointer; font-size:11.5px;">download as <b>NDJSON</b><div style="color:var(--muted); font-size:10.5px;">one JSON object per line</div></div>
+  <div class="exp-item" data-fmt="csv" style="padding:8px 12px; cursor:pointer; font-size:11.5px; border-top:1px solid var(--border);">download as <b>CSV</b><div style="color:var(--muted); font-size:10.5px;">flattened, spreadsheet-friendly</div></div>
+  <div class="exp-item" data-fmt="copy" style="padding:8px 12px; cursor:pointer; font-size:11.5px; border-top:1px solid var(--border);">copy current view as JSON</div>
+</div>
+
+<script>
+// One-time welcome banner. Hidden after the user dismisses it; the
+// flag lives in localStorage so it does not reappear on the same
+// browser. Cleared by clearing localStorage or by visiting in a
+// private window.
+(function() {
+  const banner = document.getElementById("welcomeBanner");
+  if (!banner) return;
+  if (!localStorage.getItem("hopframe.welcomed")) {
+    banner.style.display = "block";
+  }
+  document.getElementById("welcomeDismiss").addEventListener("click", () => {
+    localStorage.setItem("hopframe.welcomed", "1");
+    banner.style.display = "none";
+  });
+})();
+
+const SEV_RANK = { info: 0, low: 1, medium: 2, high: 3, critical: 4 };
+
+const state = {
+  records: [],
+  expanded: new Set(),
+  filters: { window: '15m', action: '', minSeverity: '', search: '', extra: {} },
+};
+
+//, helpers -
+const $ = (id) => document.getElementById(id);
+const escape = (s) => String(s ?? '').replace(/[<>&"]/g, c => ({ '<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;' }[c]));
+const fmtTime = (ts) => new Date(ts).toLocaleTimeString();
+const truncate = (s, n) => s && s.length > n ? s.slice(0, n) + '…' : (s || '');
+
+function bucketForWindow(w) {
+  return ({ '5m':'10s', '15m':'30s', '1h':'2m', '6h':'10m', '24h':'30m' })[w] || '30s';
+}
+
+function shouldShow(rec) {
+  const ev = rec.event;
+  const f = state.filters;
+  if (f.action && ev.action !== f.action) return false;
+  if (f.minSeverity) {
+    const need = SEV_RANK[f.minSeverity] || 0;
+    const have = SEV_RANK[ev.severity || 'info'] || 0;
+    if (have < need) return false;
+  }
+  if (f.search && !((ev.message && ev.message.raw) || '').includes(f.search)) return false;
+  for (const [k, v] of Object.entries(f.extra)) {
+    if (k === 'category') {
+      if (!(ev.findings || []).some(x => x.category === v)) return false;
+    } else if (k === 'method') {
+      if (((ev.message && ev.message.method) || '') !== v) return false;
+    } else if (k === 'counterparty') {
+      if ((ev.counterparty || '') !== v) return false;
+    } else if (k === 'protocol') {
+      if (ev.protocol !== v) return false;
+    } else if (k === 'agent_run_id') {
+      if (ev.agent_run_id !== v) return false;
+    } else if (k === 'severity') {
+      if ((ev.severity || 'info') !== v) return false;
+    }
+  }
+  return true;
+}
+
+function rowFor(rec) {
+  const ev = rec.event;
+  const time = fmtTime(ev.timestamp);
+  const peer = ev.counterparty || ev.agent_run_id || '-';
+  const peerTitle = ev.counterparty ? `peer: ${ev.counterparty}` : (ev.agent_run_id ? `run: ${ev.agent_run_id}` : '');
+  const findings = (ev.findings || []).slice(0, 3).map(f =>
+    `<span class="clickable-field" onclick="event.stopPropagation(); addFilter('category','${escape(f.category)}')">${escape(f.rule_id || f.category || '')}</span>`
+  ).join(' · ') + ((ev.findings || []).length > 3 ? ` +${(ev.findings||[]).length - 3}` : '');
+  const proto = ev.protocol || '';
+  const sev = ev.severity || 'info';
+  return `<tr class="row action-${ev.action}" data-seq="${rec.seq}">
+    <td class="col-time">${escape(time)}</td>
+    <td class="col-action"><span class="pill ${ev.action} clickable-field" onclick="event.stopPropagation(); setAction('${ev.action}')">${ev.action}</span></td>
+    <td class="col-sev"><span class="pill sev-${sev} clickable-field" onclick="event.stopPropagation(); setMinSeverity('${sev}')">${sev}</span></td>
+    <td class="col-proto"><span class="pill proto-${proto} clickable-field" onclick="event.stopPropagation(); addFilter('protocol','${escape(proto)}')">${escape(proto)}</span></td>
+    <td class="col-method clickable-field" onclick="event.stopPropagation(); addFilter('method','${escape(ev.message && ev.message.method || '')}')">${escape(ev.message && ev.message.method || '-')}</td>
+    <td class="col-peer clickable-field" title="${escape(peerTitle)}" onclick="event.stopPropagation(); addFilter(${ev.counterparty ? "'counterparty'" : "'agent_run_id'"}, '${escape(ev.counterparty || ev.agent_run_id || '')}')">${escape(peer)}</td>
+    <td class="col-findings">${findings || '<span style="color:var(--muted)">-</span>'}</td>
+  </tr>`;
+}
+
+function detailFor(rec) {
+  const ev = rec.event;
+  const findingChips = (ev.findings || []).map(f =>
+    `<div class="find" onclick="addFilter('category','${escape(f.category)}')"><b>${escape(f.rule_id)}</b><br>${escape(f.description || '').slice(0, 120)}</div>`
+  ).join('');
+  const meta = [
+    ['seq', rec.seq],
+    ['ingested', fmtTime(rec.ingest_at)],
+    ['hash', (rec.hash || '').slice(0, 16)],
+    ['agent_run', ev.agent_run_id || '-'],
+    ['source', ev.source || '-'],
+    ['destination', ev.destination || '-'],
+    ['latency', ev.latency_micros ? ev.latency_micros + 'µs' : '-'],
+  ].map(([k, v]) => `<span><b>${k}</b> ${escape(v)}</span>`).join('');
+  return `<tr class="detail" data-seq="${rec.seq}">
+    <td colspan="7">
+      <div class="meta">${meta}</div>
+      ${findingChips ? `<div class="findings">${findingChips}</div>` : ''}
+      <pre>${escape(JSON.stringify(rec, null, 2))}</pre>
+    </td>
+  </tr>`;
+}
+
+function render() {
+  const filtered = state.records.filter(shouldShow);
+  const empty = $('empty');
+  const rows = $('rows');
+  if (filtered.length === 0) {
+    rows.innerHTML = '';
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+  let html = '';
+  for (const rec of filtered.slice(0, 300)) {
+    html += rowFor(rec);
+    if (state.expanded.has(rec.seq)) html += detailFor(rec);
+  }
+  rows.innerHTML = html;
+  rows.querySelectorAll('tr.row').forEach(tr => {
+    tr.addEventListener('click', () => {
+      const seq = Number(tr.dataset.seq);
+      if (state.expanded.has(seq)) state.expanded.delete(seq);
+      else state.expanded.add(seq);
+      render();
+    });
+  });
+  renderChips();
+}
+
+//, filters / chips -
+function setAction(action) {
+  state.filters.action = action;
+  document.querySelectorAll('#actionGroup .seg').forEach(s => {
+    s.classList.toggle('active', s.dataset.action === action);
+  });
+  render();
+}
+function setMinSeverity(sev) {
+  state.filters.minSeverity = sev;
+  $('minSeverity').value = sev;
+  render();
+}
+function addFilter(key, val) {
+  if (!val) return;
+  state.filters.extra[key] = val;
+  render();
+}
+function removeFilter(key) {
+  delete state.filters.extra[key];
+  render();
+}
+function clearFilters() {
+  state.filters.action = '';
+  state.filters.minSeverity = '';
+  state.filters.search = '';
+  state.filters.extra = {};
+  $('minSeverity').value = '';
+  $('search').value = '';
+  document.querySelectorAll('#actionGroup .seg').forEach(s => s.classList.toggle('active', s.dataset.action === ''));
+  render();
+}
+function renderChips() {
+  const el = $('chips');
+  const items = Object.entries(state.filters.extra);
+  el.innerHTML = items.map(([k, v]) =>
+    `<span class="chip">${escape(k)}: ${escape(v)} <button onclick="removeFilter('${escape(k)}')">×</button></span>`
+  ).join('');
+}
+
+//, analytics rendering -
+function renderTools(list) {
+  const el = $('toolRisk');
+  if (list.length === 0) {
+    el.innerHTML = '<li class="empty-line">no tool calls yet, try a tools/call</li>';
+    return;
+  }
+  el.innerHTML = list.map(t => {
+    const cls = t.blocks > 0 ? 'bad' : (t.warnings > 0 ? 'warn' : '');
+    const flag = t.blocks > 0 ? '<span style="color:var(--red);margin-right:5px">●</span>' : '';
+    return `<li class="clickable" onclick="addFilter('method','tools/call')">${flag}<span>${escape(t.tool)}</span><span class="num ${cls}">${t.total_calls}c · ${t.blocks}b · ${t.warnings}w</span></li>`;
+  }).join('');
+}
+function renderAgents(list) {
+  const el = $('agentActivity');
+  if (list.length === 0) {
+    el.innerHTML = '<li class="empty-line">no agent runs yet, set <code>X-Hopframe-Agent-Run-Id</code> on a request</li>';
+    return;
+  }
+  el.innerHTML = list.map(a => {
+    const cls = a.blocks > 0 ? 'bad' : '';
+    const flag = a.blocks > 0 ? '<span style="color:var(--red);margin-right:5px" title="had blocks">●</span>' : '';
+    const id = truncate(a.agent_run_id, 16);
+    return `<li class="clickable" data-run="${escape(a.agent_run_id)}">${flag}<span title="${escape(a.agent_run_id)}">${escape(id)}</span><span class="num ${cls}">${a.events}e · ${a.blocks}b</span></li>`;
+  }).join('');
+  el.querySelectorAll('li.clickable').forEach(li => li.addEventListener('click', () => openTimeline(li.dataset.run)));
+}
+function renderCounterparties(list) {
+  const el = $('counterparties');
+  if (list.length === 0) {
+    el.innerHTML = '<li class="empty-line">no A2A peers seen, only relevant for A2A traffic</li>';
+    return;
+  }
+  el.innerHTML = list.map(c => {
+    const cls = c.blocks > 0 ? 'bad' : (c.warnings > 0 ? 'warn' : '');
+    const flag = c.blocks > 0 ? '<span style="color:var(--red);margin-right:5px">●</span>' : '';
+    const id = truncate(c.counterparty, 18);
+    return `<li class="clickable" data-peer="${escape(c.counterparty)}">${flag}<span title="${escape(c.counterparty)}">${escape(id)}</span><span class="num ${cls}">${c.events}e · ${c.blocks}b · ${c.warnings}w</span></li>`;
+  }).join('');
+  el.querySelectorAll('li.clickable').forEach(li => li.addEventListener('click', () => addFilter('counterparty', li.dataset.peer)));
+}
+function renderCategories(list) {
+  const el = $('categoryCounts');
+  if (list.length === 0) {
+    el.innerHTML = '<li class="empty-line">no findings yet, clean traffic is good news</li>';
+    return;
+  }
+  el.innerHTML = list.map(c =>
+    `<li class="clickable" data-cat="${escape(c.category)}"><span>${escape(c.category)}</span><span class="num">${c.count}</span></li>`
+  ).join('');
+  el.querySelectorAll('li.clickable').forEach(li => li.addEventListener('click', () => addFilter('category', li.dataset.cat)));
+}
+function renderTaskConcerns(list) {
+  const el = $('taskConcerns');
+  if (list.length === 0) {
+    el.innerHTML = '<li class="empty-line">no task concerns, A2A drift / state checks pass</li>';
+    return;
+  }
+  el.innerHTML = list.map(t => {
+    const id = truncate(t.task_id, 16);
+    return `<li><span title="${escape(t.description || '')}">${escape(id)}</span><span class="num bad">${escape((t.rule_id||'').replace('task.', ''))}</span></li>`;
+  }).join('');
+}
+
+//, metrics + histogram -
+function renderMetrics(m) {
+  if (!m) return;
+  $('m-total').textContent = m.total ?? '-';
+  $('m-allowed').textContent = m.allowed ?? '-';
+  $('m-warned').textContent = m.warned ?? '-';
+  $('m-blocked').textContent = m.blocked ?? '-';
+  $('m-findings').textContent = m.findings ?? '-';
+  $('m-peers').textContent = m.unique_peers ?? '-';
+  $('m-runs').textContent = m.unique_runs ?? '-';
+}
+function drawHistogram(h) {
+  const svg = $('hist');
+  if (!svg || !h) return;
+  const allow = h.allow || [], warn = h.warn || [], block = h.block || [];
+  const n = Math.max(allow.length, warn.length, block.length);
+  if (n === 0) { svg.innerHTML = ''; return; }
+  const w = 360, height = 56;
+  const max = Math.max(1, ...allow.map((a,i) => a + (warn[i]||0) + (block[i]||0)));
+  const colW = w / n;
+  const barW = Math.max(1, colW - 1);
+  let html = '';
+  for (let i = 0; i < n; i++) {
+    const a = allow[i] || 0, wn = warn[i] || 0, b = block[i] || 0;
+    const total = a + wn + b;
+    if (total === 0) continue;
+    const x = i * colW;
+    const aH = (a / max) * (height - 2);
+    const wH = (wn / max) * (height - 2);
+    const bH = (b / max) * (height - 2);
+    let y = height;
+    // Stack from bottom up: allow → warn → block
+    if (a > 0) { y -= aH; html += `<rect x="${x}" y="${y}" width="${barW}" height="${aH}" fill="var(--green)"/>`; }
+    if (wn > 0) { y -= wH; html += `<rect x="${x}" y="${y}" width="${barW}" height="${wH}" fill="var(--yellow)"/>`; }
+    if (b > 0) { y -= bH; html += `<rect x="${x}" y="${y}" width="${barW}" height="${bH}" fill="var(--red)"/>`; }
+  }
+  svg.innerHTML = html;
+}
+
+//, modal timeline -
+async function openTimeline(runID) {
+  $('modalTitle').textContent = 'agent timeline · ' + runID;
+  const r = await fetch('/v1/agent-runs/' + encodeURIComponent(runID) + '/timeline');
+  const j = await r.json();
+  const records = j.records || [];
+  const rows = $('timelineRows');
+  if (records.length === 0) {
+    rows.innerHTML = '';
+    $('timelineEmpty').style.display = '';
+  } else {
+    $('timelineEmpty').style.display = 'none';
+    rows.innerHTML = records.map(rec => {
+      const ev = rec.event;
+      const findings = (ev.findings || []).map(f => `<span style="background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:0 5px;margin-right:4px">${escape(f.rule_id || '')}</span>`).join('');
+      return `<tr class="row action-${ev.action}">
+        <td class="col-time">${escape(fmtTime(ev.timestamp))}</td>
+        <td class="col-action"><span class="pill ${ev.action}">${ev.action}</span></td>
+        <td class="col-sev"><span class="pill sev-${ev.severity || 'info'}">${ev.severity || 'info'}</span></td>
+        <td class="col-proto"><span class="pill proto-${ev.protocol}">${escape(ev.protocol)}</span></td>
+        <td class="col-method">${escape((ev.message && ev.message.method) || '-')}</td>
+        <td>${escape(ev.direction)}</td>
+        <td class="col-findings">${findings || '<span style="color:var(--muted)">-</span>'}</td>
+      </tr>`;
+    }).join('');
+  }
+  $('modalBg').classList.add('open');
+}
+function closeModal() { $('modalBg').classList.remove('open'); }
+
+//, toolbar wiring -
+document.querySelectorAll('#rangeGroup .seg').forEach(s => {
+  s.addEventListener('click', () => {
+    state.filters.window = s.dataset.window;
+    document.querySelectorAll('#rangeGroup .seg').forEach(x => x.classList.toggle('active', x === s));
+    refreshAnalytics();
+  });
+});
+document.querySelectorAll('#actionGroup .seg').forEach(s => {
+  s.addEventListener('click', () => setAction(s.dataset.action));
+});
+$('minSeverity').addEventListener('input', e => { state.filters.minSeverity = e.target.value; render(); });
+$('search').addEventListener('input', e => { state.filters.search = e.target.value; render(); });
+$('clearBtn').addEventListener('click', clearFilters);
+
+//, continuous integrity check -
+async function checkIntegrity() {
+  const badge = $('trustBadge');
+  const label = $('trustLabel');
+  badge.classList.remove('broken');
+  badge.classList.add('checking');
+  label.textContent = 'checking…';
+  try {
+    const r = await fetch('/v1/verify');
+    const j = await r.json();
+    badge.classList.remove('checking');
+    if (j.ok) {
+      badge.classList.remove('broken');
+      label.textContent = 'integrity verified';
+      badge.title = 'Audit log integrity verified at ' + new Date().toLocaleTimeString() + '. Re-checks every 60s.';
+    } else {
+      badge.classList.add('broken');
+      label.textContent = 'INTEGRITY BROKEN @ seq ' + (j.bad_seq || '?');
+      badge.title = 'Hash chain mismatch detected. The on-disk audit log has been altered. ' + (j.error || '');
+    }
+  } catch (_) {
+    badge.classList.remove('checking');
+    label.textContent = 'integrity check failed';
+  }
+}
+
+//, export -
+$('exportBtn').addEventListener('click', (e) => {
+  const m = $('exportMenu');
+  const r = e.target.getBoundingClientRect();
+  m.style.top = (r.bottom + 4) + 'px';
+  m.style.left = (r.right - 200) + 'px';
+  m.style.display = m.style.display === 'block' ? 'none' : 'block';
+});
+document.addEventListener('click', e => {
+  if (!e.target.closest('#exportBtn') && !e.target.closest('#exportMenu')) {
+    $('exportMenu').style.display = 'none';
+  }
+});
+function buildQuery() {
+  const p = new URLSearchParams();
+  if (state.filters.action) p.set('action', state.filters.action);
+  if (state.filters.minSeverity) p.set('min_severity', state.filters.minSeverity);
+  if (state.filters.search) p.set('search', state.filters.search);
+  for (const [k, v] of Object.entries(state.filters.extra)) p.set(k, v);
+  return p.toString();
+}
+document.querySelectorAll('.exp-item').forEach(it => {
+  it.addEventListener('click', async () => {
+    const fmt = it.dataset.fmt;
+    $('exportMenu').style.display = 'none';
+    if (fmt === 'copy') {
+      const visible = state.records.filter(shouldShow);
+      try {
+        await navigator.clipboard.writeText(JSON.stringify(visible, null, 2));
+        flashToast('copied ' + visible.length + ' records to clipboard');
+      } catch (e) {
+        flashToast('clipboard blocked, use NDJSON download');
+      }
+      return;
+    }
+    const url = '/v1/events.' + fmt + (buildQuery() ? '?' + buildQuery() : '');
+    window.location.href = url;
+  });
+});
+function flashToast(text) {
+  const t = document.createElement('div');
+  t.textContent = text;
+  Object.assign(t.style, {
+    position: 'fixed', bottom: '24px', left: '50%', transform: 'translateX(-50%)',
+    background: 'var(--panel)', border: '1px solid var(--border-2)', color: 'var(--text)',
+    padding: '8px 14px', borderRadius: '4px', fontSize: '12px', zIndex: 100,
+    boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+  });
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2400);
+}
+
+//, analytics polling -
+async function refreshAnalytics() {
+  const window_ = state.filters.window;
+  const bucket_ = bucketForWindow(window_);
+  try {
+    const [tools, agents, cats, peers, tasks, metrics, hist] = await Promise.all([
+      fetch('/v1/analytics/tools?limit=10').then(r => r.json()),
+      fetch('/v1/analytics/agents?limit=10').then(r => r.json()),
+      fetch('/v1/analytics/categories').then(r => r.json()),
+      fetch('/v1/analytics/counterparties?limit=10').then(r => r.json()),
+      fetch('/v1/analytics/tasks?limit=10').then(r => r.json()),
+      fetch(`/v1/metrics?window=${window_}&bucket=${bucket_}`).then(r => r.json()),
+      fetch(`/v1/histogram?window=${window_}&bucket=${bucket_}`).then(r => r.json()),
+    ]);
+    renderTools(tools.tools || []);
+    renderAgents(agents.agents || []);
+    renderCategories(cats.categories || []);
+    renderCounterparties(peers.counterparties || []);
+    renderTaskConcerns(tasks.tasks || []);
+    renderMetrics(metrics);
+    drawHistogram(hist);
+  } catch (_) {}
+}
+
+//, bootstrap + SSE -
+function pushRecord(rec) {
+  state.records.unshift(rec);
+  if (state.records.length > 1000) state.records.length = 1000;
+  $('seq').textContent = rec.seq;
+  $('head').textContent = (rec.hash || '').slice(0, 14);
+  render();
+}
+async function bootstrap() {
+  const r = await fetch('/v1/events?limit=200');
+  const j = await r.json();
+  (j.records || []).forEach(rec => state.records.push(rec));
+  if (state.records[0]) {
+    $('seq').textContent = state.records[0].seq;
+    $('head').textContent = (state.records[0].hash || '').slice(0, 14);
+  }
+  render();
+  refreshAnalytics();
+}
+function connect() {
+  const es = new EventSource('/v1/events/stream');
+  es.addEventListener('record', e => { try { pushRecord(JSON.parse(e.data)); } catch (_) {} });
+  es.onopen = () => { $('liveDot').classList.add('live'); };
+  es.onerror = () => {
+    $('liveDot').classList.remove('live');
+    setTimeout(() => { es.close(); connect(); }, 2000);
+  };
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { closeModal(); $('exportMenu').style.display = 'none'; }
+});
+
+bootstrap().then(connect);
+setInterval(refreshAnalytics, 5000);
+checkIntegrity();
+setInterval(checkIntegrity, 60000);
+</script>
+
+</body>
+</html>

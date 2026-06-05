@@ -1,0 +1,161 @@
+category: prompt-injection
+rules:
+  - id: pi.core.ignore_previous_instructions
+    description: |
+      Classic instruction override: attacker tells the model to ignore,
+      forget, or disregard previous instructions and follow new ones.
+    severity: high
+    mode: warn
+    fields:
+      - "params.**"
+      - "result.**"
+    patterns:
+      - 'ignore (the|all|any|your)?\s*(previous|prior|above|earlier)\s*(instructions?|prompts?|rules?|directives?)'
+      - 'disregard (the|all|any)?\s*(previous|prior|above|system)\s*(instructions?|prompts?|messages?)'
+      - 'forget (everything|all)\s+(you|that you).{0,40}(told|instructed|prompted)'
+
+  - id: pi.core.role_override
+    description: New role or persona injection (e.g. "you are now DAN").
+    severity: high
+    mode: warn
+    fields:
+      - "params.**"
+      - "result.**"
+    patterns:
+      - 'you are now (an? )?(?:dan|developer mode|jailbroken|unrestricted|admin|root)'
+      - 'pretend (to be|you are) (a|an) (different|new|admin|root|system)'
+      - '(?:from now on|starting now)[, ]+(?:you|act|behave|respond)\s+(?:as|like)'
+
+  - id: pi.core.system_prompt_extraction
+    description: Attempts to leak the system prompt or hidden instructions.
+    severity: high
+    mode: warn
+    fields:
+      - "params.**"
+      - "result.**"
+    patterns:
+      - '(?:reveal|print|show|repeat|output|return)\s+(?:your|the)\s+(?:system|initial|original|hidden)\s+(?:prompt|instructions?|message|rules?)'
+      - 'what (?:is|are)\s+your\s+(?:system|initial|original|secret)\s+(?:prompt|instructions?|rules?)'
+      - 'repeat (?:the )?(?:above|previous|all) (?:text|messages?|content) (?:verbatim|exactly|in full)'
+
+  - id: pi.core.indirect_injection_marker
+    description: |
+      Common indirect-injection patterns embedded in fetched content
+      that try to address the model directly inside tool results.
+    severity: high
+    mode: warn
+    directions:
+      - outbound
+    fields:
+      - "result.**"
+    patterns:
+      - '\[\[\s*(?:system|assistant|user)\s*\]\]'
+      - '<\s*(?:system|assistant)[^>]*>(?:[^<]{0,200})ignore'
+      - 'important.{0,40}(?:assistant|model|claude|gpt|chatgpt)[,:]?\s+(?:please\s+)?(?:do not|never|always|now)'
+
+  - id: pi.core.invisible_unicode
+    description: Invisible Unicode bytes commonly used to smuggle instructions.
+    severity: medium
+    mode: warn
+    fields:
+      - "params.**"
+      - "result.**"
+    case_sensitive: true
+    patterns:
+      # Tag block (used by Anthropic/OpenAI smuggling research),
+      # zero-width spaces, RTL/LTR markers.
+      - '[\x{E0000}-\x{E007F}]'
+      - '[\x{200B}-\x{200F}\x{202A}-\x{202E}\x{2066}-\x{2069}]{3,}'
+
+  - id: pi.core.exfiltration_callback
+    description: Asking the model to encode data and call a tool with it.
+    severity: high
+    mode: block
+    fields:
+      - "params.**"
+      - "result.**"
+    patterns:
+      - 'base64\s*(?:encode|encoded|the).{0,80}(?:then\s+)?(?:call|invoke|use|run)\s+(?:the\s+)?\w+\s*tool'
+      - 'send (?:the|all|any) (?:context|messages|history|data|secrets) to\s+https?://'
+      - 'fetch\s+https?://[^\s]{1,200}\?\w+=\$\{'
+
+  - id: pi.core.chain_of_thought_hijack
+    description: |
+      Attempts to inject reasoning content that biases the model
+      toward complying with a hostile downstream instruction.
+    severity: high
+    mode: warn
+    fields:
+      - "params.**"
+      - "result.**"
+    confidence: 0.7
+    patterns:
+      - '(?:let me think|step by step|reasoning|chain.of.thought)[^.]{0,80}(?:therefore|thus|hence)\s+(?:i (?:must|should|will)|the assistant (?:must|should|will))\s+(?:ignore|bypass|disclose|reveal)'
+
+  - id: pi.core.context_termination
+    description: |
+      Attacker-supplied "end of context" markers attempting to
+      restart the conversation under attacker control.
+    severity: high
+    mode: warn
+    fields:
+      - "params.**"
+      - "result.**"
+    confidence: 0.85
+    patterns:
+      - '(?:###\s*END[\s_-]*(?:OF[\s_-]*)?(?:CONTEXT|PROMPT|INSTRUCTIONS)|---\s*end\s*of\s*(?:context|prompt|instructions)\s*---)'
+      - '(?:</prompt>|</system>|</context>)\s*(?:<user>|<system>|new\s+instruction)'
+
+  - id: pi.core.delimiter_injection
+    description: |
+      Markdown / XML delimiter abuse to confuse the model into
+      treating user input as a privileged section.
+    severity: medium
+    mode: warn
+    fields:
+      - "params.**"
+      - "result.**"
+    confidence: 0.6
+    patterns:
+      - '```\s*(?:system|admin|developer|root)\s*\n'
+      - '<\|(?:system|admin|user|assistant)\|>'
+
+  - id: pi.core.jailbreak_persona
+    description: |
+      Common jailbreak persona names, DAN, STAN, AIM, etc. -
+      that the underground prompt-injection community has codified.
+    severity: high
+    mode: warn
+    fields:
+      - "params.**"
+      - "result.**"
+    confidence: 0.85
+    patterns:
+      - '\b(?:dan|stan|aim|dude|jailbreak[\s_-]?mode|developer[\s_-]?mode|sudo[\s_-]?mode|god[\s_-]?mode|evil[\s_-]?bot)\b\s*(?:mode|persona|prompt|now|activated)'
+      - '(?:enable|activate|switch[\s_-]?to)\s+(?:dan|stan|aim|jailbreak|developer)\s+mode'
+
+  - id: pi.core.policy_negation
+    description: |
+      Attempts to convince the model that its safety policy doesn't
+      apply due to context (training data, hypothetical, fiction, etc.).
+    severity: high
+    mode: warn
+    fields:
+      - "params.**"
+      - "result.**"
+    confidence: 0.7
+    patterns:
+      - '(?:hypothetically|in\s+a\s+(?:fictional|hypothetical)|for\s+(?:research|educational|academic)\s+purposes)[^.]{0,100}(?:bypass|ignore|skip)\s+(?:safety|policy|guardrails|filter)'
+      - 'pretend\s+(?:that\s+)?(?:safety|policy|filter|guardrail)\s+(?:does\s*n.t|isn.t)\s+(?:apply|exist|matter)'
+
+  - id: pi.core.training_data_extraction
+    description: |
+      Attempts to coerce the model into reciting training data verbatim.
+    severity: medium
+    mode: warn
+    fields:
+      - "params.**"
+      - "result.**"
+    confidence: 0.6
+    patterns:
+      - '(?:repeat|recite|output)\s+(?:the\s+)?(?:training\s+data|previous\s+conversation|chat\s+history)\s+(?:verbatim|exactly|word.for.word)'

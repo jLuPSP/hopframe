@@ -1,0 +1,119 @@
+site_name: Hopframe
+site_description: Source-available security mesh for agent traffic. Sits inline on MCP and A2A.
+site_url: https://jlupsp.github.io/hopframe/
+repo_url: https://github.com/jLuPSP/hopframe
+repo_name: jLuPSP/hopframe
+edit_uri: edit/main/docs/
+
+docs_dir: docs
+
+theme:
+  name: material
+  language: en
+  palette:
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue grey
+      accent: light blue
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue grey
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+  features:
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - navigation.footer
+    - navigation.tracking
+    - search.highlight
+    - search.suggest
+    - search.share
+    - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
+    - content.action.edit
+    - content.action.view
+    - content.tooltips
+    - toc.follow
+  font:
+    text: Inter
+    code: JetBrains Mono
+  icon:
+    repo: fontawesome/brands/github
+
+markdown_extensions:
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      permalink_title: Anchor link
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets:
+      base_path: ["docs"]
+      check_paths: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.tilde
+  - pymdownx.caret
+
+plugins:
+  - search
+
+nav:
+  - Home: index.md
+  - Quickstart: quickstart.md
+  - Install:
+    - Install tiers: install-tiers.md
+    - Deployment shapes: deployment-shapes.md
+    - Vertex AI Agent Engine: agent-engine.md
+  - Concepts:
+    - What it catches: capabilities.md
+    - Compared to: compare.md
+    - Policies: policies.md
+    - Threat model: threat-model.md
+    - Architecture: architecture.md
+  - Reference:
+    - CLI: cli.md
+    - HTTP API: api.md
+  - Operate:
+    - Operations: operations.md
+    - Developer guide: developer.md
+  - Roadmap: roadmap.md
+
+extra:
+  generator: false
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/jLuPSP/hopframe
+
+copyright: Copyright &copy; 2026 Jordan Lu · BSL 1.1, converts to Apache 2.0 three years after each release
