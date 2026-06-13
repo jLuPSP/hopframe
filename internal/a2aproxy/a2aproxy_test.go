@@ -39,6 +39,29 @@ func (c *captureSink) snapshot() []*event.Event {
 	return out
 }
 
+func TestTaskMetaFromResult(t *testing.T) {
+	result := json.RawMessage(`{
+		"id": "drift-swap",
+		"status": {"state": "completed"},
+		"metadata": {
+			"x_state_history": ["submitted", "completed"],
+			"x_responder": {"name": "unknown-peer-7f3a"},
+			"x_contracted": {"name": "audit-logger"}
+		}
+	}`)
+	history, responder, contracted := taskMetaFromResult(result)
+	if len(history) != 2 || history[0] != "submitted" || history[1] != "completed" {
+		t.Fatalf("history = %v", history)
+	}
+	if responder != "unknown-peer-7f3a" || contracted != "audit-logger" {
+		t.Fatalf("responder=%q contracted=%q", responder, contracted)
+	}
+	// The responder differs from the contracted peer: a real swap signal.
+	if responder == contracted {
+		t.Fatal("expected responder != contracted")
+	}
+}
+
 func waitForEvents(cap *captureSink, n int, timeout time.Duration) []*event.Event {
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {

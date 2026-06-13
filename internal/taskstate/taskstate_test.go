@@ -71,6 +71,46 @@ func TestCounterpartyChangeFlagged(t *testing.T) {
 	}
 }
 
+func TestValidateDeclaredHistoryStateSkip(t *testing.T) {
+	// submitted -> completed with no working in between: work claimed done
+	// that never ran.
+	findings := ValidateDeclaredHistory([]State{StateSubmitted, StateCompleted})
+	if !hasFinding(findings, "task.state_skip") {
+		t.Fatalf("expected task.state_skip, got %+v", findings)
+	}
+}
+
+func TestValidateDeclaredHistoryHonestPathClean(t *testing.T) {
+	// A task that actually passed through working is not a skip.
+	findings := ValidateDeclaredHistory([]State{StateSubmitted, StateWorking, StateCompleted})
+	if hasFinding(findings, "task.state_skip") {
+		t.Fatalf("honest submitted->working->completed should not flag state_skip: %+v", findings)
+	}
+}
+
+func TestValidateDeclaredHistoryInvalidTransition(t *testing.T) {
+	// completed is terminal; completed -> working is not a legal transition.
+	findings := ValidateDeclaredHistory([]State{StateSubmitted, StateWorking, StateCompleted, StateWorking})
+	if !hasFinding(findings, "task.invalid_transition") {
+		t.Fatalf("expected task.invalid_transition, got %+v", findings)
+	}
+}
+
+func TestValidateDeclaredHistoryEmpty(t *testing.T) {
+	if f := ValidateDeclaredHistory(nil); len(f) != 0 {
+		t.Fatalf("empty history should yield no findings, got %+v", f)
+	}
+}
+
+func hasFinding(findings []Finding, code string) bool {
+	for _, f := range findings {
+		if f.Code == code {
+			return true
+		}
+	}
+	return false
+}
+
 func TestCheckLongRunning(t *testing.T) {
 	tr := New(50*time.Millisecond, 100)
 	tr.Update("t1", "p", StateWorking, "fp")

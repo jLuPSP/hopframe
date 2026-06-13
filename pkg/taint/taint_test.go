@@ -1,6 +1,7 @@
 package taint
 
 import (
+	"encoding/base64"
 	"testing"
 	"time"
 )
@@ -33,6 +34,43 @@ func TestMatchAny(t *testing.T) {
 	values := []string{"unrelated string", "x abcdefghijklmnopqrstuvwxyzABCDEFG x"}
 	if _, ok := tr.MatchAny("run-1", values); !ok {
 		t.Fatalf("expected match-any hit on second value")
+	}
+}
+
+func TestMatchAfterBase64Reencoding(t *testing.T) {
+	tr := New(time.Hour, 64, 1024)
+	secret := "svc_tok_FAKE_0000_DO_NOT_USE_example_only"
+	tr.Tag("run-1", Source{Protocol: "mcp", Method: "tools/call"}, secret)
+
+	// The agent base64-encodes the tainted secret before forwarding it
+	// over A2A. Exact-byte matching would miss it; canonical-view matching
+	// decodes the candidate and recognizes the underlying bytes.
+	encoded := base64.StdEncoding.EncodeToString([]byte(secret))
+	if _, ok := tr.Match("run-1", "register token: "+encoded); !ok {
+		t.Fatalf("expected match against base64-re-encoded secret")
+	}
+}
+
+func TestMatchAfterUnicodeObfuscation(t *testing.T) {
+	tr := New(time.Hour, 64, 1024)
+	secret := "internal-host db-primary.corp.example.internal:5432"
+	tr.Tag("run-1", Source{}, secret)
+
+	// Same bytes with a zero-width space (U+200B) smuggled in. Normalization
+	// strips it on both sides, so the reuse is still recognized.
+	obfuscated := "internal-host db-primary.corp" + string(rune(0x200B)) + ".example.internal:5432"
+	if _, ok := tr.Match("run-1", obfuscated); !ok {
+		t.Fatalf("expected match against zero-width-obfuscated reuse")
+	}
+}
+
+func TestNoMatchOnUnrelatedBase64(t *testing.T) {
+	tr := New(time.Hour, 64, 1024)
+	tr.Tag("run-1", Source{}, "svc_tok_FAKE_0000_DO_NOT_USE_example_only")
+	// An unrelated base64 blob must not collide with the tagged secret.
+	other := base64.StdEncoding.EncodeToString([]byte("completely different payload, nothing to do with the token"))
+	if _, ok := tr.Match("run-1", other); ok {
+		t.Fatalf("unrelated base64 should not match")
 	}
 }
 

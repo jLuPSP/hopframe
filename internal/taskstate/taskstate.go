@@ -235,6 +235,47 @@ func firstState(s State) State {
 	return s
 }
 
+// ValidateDeclaredHistory inspects the self-declared state history a peer
+// puts in a single task response (A2A x_state_history). Unlike Update,
+// which tracks live observations across calls, this catches drift a peer
+// asserts all at once: a task that reports `completed` without ever
+// passing through `working` (work claimed done that never ran), and any
+// step in the declared sequence that is not a legal lifecycle transition.
+func ValidateDeclaredHistory(history []State) []Finding {
+	if len(history) == 0 {
+		return nil
+	}
+	var findings []Finding
+	sawWorking := false
+	reachedCompleted := false
+	for _, s := range history {
+		if s == StateWorking || s == StateInputRequired {
+			sawWorking = true
+		}
+		if s == StateCompleted {
+			reachedCompleted = true
+		}
+	}
+	if reachedCompleted && !sawWorking {
+		findings = append(findings, Finding{
+			Code:    "task.state_skip",
+			Message: "task reported completed without ever entering working (no work in between)",
+		})
+	}
+	for i := 1; i < len(history); i++ {
+		if history[i] == history[i-1] {
+			continue
+		}
+		if !validTransition(history[i-1], history[i]) {
+			findings = append(findings, Finding{
+				Code:    "task.invalid_transition",
+				Message: "declared invalid state transition " + string(history[i-1]) + " -> " + string(history[i]),
+			})
+		}
+	}
+	return findings
+}
+
 // validTransition encodes the lifecycle the A2A protocol expects.
 // Backward transitions (e.g. completed → working) are flagged as
 // suspicious, replay attempts or sneaky scope changes.

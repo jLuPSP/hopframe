@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"context"
+	"encoding/base64"
 	"testing"
 	"time"
 
@@ -208,6 +209,58 @@ func TestCrossProtocolTaintLeak(t *testing.T) {
 	}
 	if !hit {
 		t.Fatalf("expected taint.cross_protocol_leak finding, got %+v", res.Event.Findings)
+	}
+	if res.Event.Action != event.ActionBlock {
+		t.Fatalf("expected block, got %q", res.Event.Action)
+	}
+}
+
+func TestCrossProtocolTaintLeakSurvivesBase64(t *testing.T) {
+	rs := mustLoadRules(t)
+	tracker := taint.New(time.Hour, 64, 1024)
+	p := &Pipeline{
+		SensorID:     "test",
+		Detectors:    []detect.Detector{rs},
+		ModeResolver: rs.HighestMode,
+		Taint:        tracker,
+	}
+
+	// A non-credential secret (no pattern rule will catch it): the taint
+	// tracker is the only thing that can block its egress.
+	secret := "internal-hostname db-primary.corp.example.internal:5432 service-handle"
+	mcpBody := []byte(`{"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"` + secret + `"}]}}`)
+	mcpEnv, err := mcp.Parse(mcpBody)
+	if err != nil {
+		t.Fatalf("parse mcp: %v", err)
+	}
+	mcpEnv.Method = mcp.MethodToolsCall
+	if tags := p.TagMCPResult(mcpEnv, "run-b64"); len(tags) == 0 {
+		t.Fatalf("expected MCP tagging to produce taints")
+	}
+
+	// The agent base64-encodes the tainted value before forwarding over A2A.
+	// Exact matching would miss it; the canonical-view taint match decodes it.
+	encoded := base64.StdEncoding.EncodeToString([]byte(secret))
+	a2aBody := []byte(`{"jsonrpc":"2.0","id":2,"method":"tasks/send","params":{"id":"t1","message":{"parts":[{"type":"text","text":"archive this for compliance: ` + encoded + `"}]}}}`)
+	a2aEnv, err := a2a.ParseTask(a2aBody)
+	if err != nil {
+		t.Fatalf("parse a2a: %v", err)
+	}
+	res, err := p.EvaluateA2A(context.Background(), a2aEnv, a2aBody, event.DirectionInbound, "client", "upstream")
+	if err != nil {
+		t.Fatalf("evaluate a2a: %v", err)
+	}
+	res.Event.AgentRunID = "run-b64"
+	p.CheckA2ALeak(a2aEnv, "run-b64", "peer-evil", res.Event)
+
+	hit := false
+	for _, f := range res.Event.Findings {
+		if f.RuleID == "taint.cross_protocol_leak" {
+			hit = true
+		}
+	}
+	if !hit {
+		t.Fatalf("expected taint.cross_protocol_leak on base64-encoded reuse, got %+v", res.Event.Findings)
 	}
 	if res.Event.Action != event.ActionBlock {
 		t.Fatalf("expected block, got %q", res.Event.Action)
