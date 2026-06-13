@@ -56,9 +56,9 @@ func TestMatchAfterUnicodeObfuscation(t *testing.T) {
 	secret := "internal-host db-primary.corp.example.internal:5432"
 	tr.Tag("run-1", Source{}, secret)
 
-	// Same bytes with a zero-width space smuggled in. Normalization strips
-	// it on both sides, so the reuse is still recognized.
-	obfuscated := "internal-host db-primary.corp​.example.internal:5432"
+	// Same bytes with a zero-width space (U+200B) smuggled in. Normalization
+	// strips it on both sides, so the reuse is still recognized.
+	obfuscated := "internal-host db-primary.corp" + string(rune(0x200B)) + ".example.internal:5432"
 	if _, ok := tr.Match("run-1", obfuscated); !ok {
 		t.Fatalf("expected match against zero-width-obfuscated reuse")
 	}
