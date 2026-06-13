@@ -95,6 +95,12 @@ type Policy struct {
 	FailOpen bool `yaml:"fail_open"`
 	// DefaultMode is the floor mode applied when a rule has none. Rarely used.
 	DefaultMode string `yaml:"default_mode"`
+	// BlockTaskDrift, when true, makes A2A task-drift findings (state skip,
+	// invalid transition, counterparty mismatch) block the response rather
+	// than only flag it. Default false: drift is detected and reported, but
+	// blocking it is an opt-in policy because instant/trivial tasks can
+	// legitimately look like a state skip.
+	BlockTaskDrift bool `yaml:"block_task_drift"`
 }
 
 // Defaults returns a Config populated with safe defaults.

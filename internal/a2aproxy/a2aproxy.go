@@ -40,6 +40,9 @@ type Options struct {
 	Tasks *taskstate.Tracker
 	// Peers, when set, enables cross-org request fingerprinting.
 	Peers *counterparty.Registry
+	// BlockTaskDrift, when true, makes task-drift findings reject the
+	// response rather than only flag it. Default false (detect-only).
+	BlockTaskDrift bool
 }
 
 // Server is an http.Handler that proxies A2A traffic.
@@ -261,7 +264,12 @@ func (s *Server) forward(ctx context.Context, w http.ResponseWriter, r *http.Req
 		if evalErr == nil && res != nil {
 			res.Event.AgentRunID = agentRunID
 			res.Event.Counterparty = counterPartyID
-			s.maybeTrackTaskOutbound(outEnv, counterPartyID, res.Event)
+			if s.maybeTrackTaskOutbound(outEnv, counterPartyID, res.Event) {
+				res.Block = true
+				if res.BlockReason == "" {
+					res.BlockReason = "blocked: A2A task drift"
+				}
+			}
 			s.maybeRecordCounterparty(counterPartyID, res.Event)
 			s.opts.Emitter.Emit(res.Event)
 			if res.Block {
@@ -300,7 +308,12 @@ func (s *Server) maybeTrackTask(env *a2a.TaskEnvelope, counterPartyID string, ev
 	if env.Method == a2a.MethodTasksCancel {
 		state = taskstate.StateCanceled
 	}
-	_, findings := s.opts.Tasks.Update(id, counterPartyID, state, msgFP)
+	// Pass "" for counterparty: the request RemoteAddr is the agent's
+	// ephemeral source, not a stable peer identity, so feeding it here
+	// produces spurious "counterparty changed" findings on every new
+	// connection. The authoritative peer-swap signal is the declared
+	// x_responder vs x_contracted mismatch, checked on the response.
+	_, findings := s.opts.Tasks.Update(id, "", state, msgFP)
 	for _, f := range findings {
 		ev.Findings = append(ev.Findings, event.Finding{
 			RuleID:      f.Code,
@@ -317,17 +330,38 @@ func (s *Server) maybeTrackTask(env *a2a.TaskEnvelope, counterPartyID string, ev
 	}
 }
 
-// maybeTrackTaskOutbound advances the task state from a server
-// response: it pulls the result.status.state field if present.
-func (s *Server) maybeTrackTaskOutbound(env *a2a.TaskEnvelope, counterPartyID string, ev *event.Event) {
+// maybeTrackTaskOutbound advances the task state from a server response and
+// inspects the peer's self-declared task metadata for drift. It pulls the
+// live status.state (tracked across calls), then validates the declared
+// x_state_history (state skips / illegal transitions) and checks that the
+// responder is the peer the task was contracted with. Any drift finding sets
+// the event action to block, and the function returns true so the caller
+// rejects the response. These are protocol-integrity failures, not bad
+// strings, so they are blocked structurally rather than via a rule mode.
+func (s *Server) maybeTrackTaskOutbound(env *a2a.TaskEnvelope, counterPartyID string, ev *event.Event) bool {
 	if s.opts.Tasks == nil || len(env.Result) == 0 {
-		return
+		return false
 	}
 	id, state := taskIDAndStateFromResult(env.Result)
-	if id == "" || state == taskstate.StateUnknown {
-		return
+	if id == "" {
+		return false
 	}
-	_, findings := s.opts.Tasks.Update(id, counterPartyID, state, "")
+
+	var findings []taskstate.Finding
+	if state != taskstate.StateUnknown {
+		_, live := s.opts.Tasks.Update(id, "", state, "") // see maybeTrackTask: avoid ephemeral-addr noise
+		findings = append(findings, live...)
+	}
+
+	history, responder, contracted := taskMetaFromResult(env.Result)
+	findings = append(findings, taskstate.ValidateDeclaredHistory(history)...)
+	if responder != "" && contracted != "" && responder != contracted {
+		findings = append(findings, taskstate.Finding{
+			Code:    "task.counterparty_mismatch",
+			Message: "responder \"" + responder + "\" is not the contracted peer \"" + contracted + "\"",
+		})
+	}
+
 	for _, f := range findings {
 		ev.Findings = append(ev.Findings, event.Finding{
 			RuleID:      f.Code,
@@ -342,6 +376,13 @@ func (s *Server) maybeTrackTaskOutbound(env *a2a.TaskEnvelope, counterPartyID st
 			ev.Severity = event.SeverityHigh
 		}
 	}
+	// Detection is always on (findings + severity). Blocking is opt-in via
+	// policy, because a legitimately instant task can look like a state skip.
+	if len(findings) > 0 && s.opts.BlockTaskDrift {
+		ev.Action = event.ActionBlock
+		return true
+	}
+	return false
 }
 
 // maybeRecordCounterparty reports an observation to the counterparty
@@ -402,6 +443,34 @@ func taskIDAndStateFromResult(result json.RawMessage) (string, taskstate.State) 
 		return "", taskstate.StateUnknown
 	}
 	return obj.ID, taskstate.State(obj.Status.State)
+}
+
+// taskMetaFromResult extracts the peer's self-declared task drift signals
+// from an A2A result: the full state history and the responder vs.
+// contracted counterparty identities (the x_* metadata the A2A reference
+// peers carry).
+func taskMetaFromResult(result json.RawMessage) (history []taskstate.State, responder, contracted string) {
+	if len(result) == 0 {
+		return nil, "", ""
+	}
+	var obj struct {
+		Metadata struct {
+			StateHistory []string `json:"x_state_history"`
+			Responder    struct {
+				Name string `json:"name"`
+			} `json:"x_responder"`
+			Contracted struct {
+				Name string `json:"name"`
+			} `json:"x_contracted"`
+		} `json:"metadata"`
+	}
+	if err := json.Unmarshal(result, &obj); err != nil {
+		return nil, "", ""
+	}
+	for _, s := range obj.Metadata.StateHistory {
+		history = append(history, taskstate.State(s))
+	}
+	return history, obj.Metadata.Responder.Name, obj.Metadata.Contracted.Name
 }
 
 // counterpartyFromRequest derives the peer id, in priority order:

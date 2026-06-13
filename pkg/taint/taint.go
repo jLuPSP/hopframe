@@ -21,6 +21,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/jlupsp/hopframe/pkg/detect"
 )
 
 // Source describes where a taint came from.
@@ -222,25 +224,48 @@ func (t *Tracker) evictIfFullLocked() {
 const shingleWidth = 24
 
 // shingleSet returns the set of SHA-256 windows of width shingleWidth
-// over value. Short values produce a single fingerprint over the
-// whole string. Used for both Tag and Match, overlap means near-
-// duplicate reuse.
+// over the canonical views of value. Used for both Tag and Match, so
+// overlap means near-duplicate reuse of the same underlying bytes even
+// when one side has been Unicode-obfuscated or base64-encoded.
 func shingleSet(value string) map[string]struct{} {
 	out := make(map[string]struct{})
+	for _, view := range canonicalViews(value) {
+		addShingles(out, view)
+	}
+	return out
+}
+
+// canonicalViews expands a value into the forms an attacker might use to
+// move the same bytes while defeating exact matching: the value with
+// Unicode obfuscation normalized away (NFKC + stripped zero-width /
+// smuggling runes), plus any base64-encoded payloads embedded in it,
+// decoded and normalized. Because both Tag and Match run over this
+// expansion, a secret tagged on the MCP wire is still recognized when the
+// agent base64-encodes or homoglyph-obfuscates it before forwarding over
+// A2A. This mirrors the rule engine's normalize + base64-recurse pass, so
+// the two halves of the engine agree on what "the same data" means.
+func canonicalViews(value string) []string {
+	views := []string{detect.NormalizeForDetection(value)}
+	for _, decoded := range detect.ExtractBase64Candidates(value) {
+		views = append(views, detect.NormalizeForDetection(decoded))
+	}
+	return views
+}
+
+func addShingles(out map[string]struct{}, value string) {
 	b := []byte(strings.TrimSpace(value))
 	if len(b) == 0 {
-		return out
+		return
 	}
 	if len(b) <= shingleWidth {
 		sum := sha256.Sum256(b)
 		out[hex.EncodeToString(sum[:])[:32]] = struct{}{}
-		return out
+		return
 	}
 	for i := 0; i+shingleWidth <= len(b); i++ {
 		sum := sha256.Sum256(b[i : i+shingleWidth])
 		out[hex.EncodeToString(sum[:])[:32]] = struct{}{}
 	}
-	return out
 }
 
 func newID() string {

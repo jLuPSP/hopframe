@@ -42,7 +42,7 @@ ENV CGO_ENABLED=0 \
 # Stub binaries are not shipped in the published image; they exist
 # only to support the local `make demo` flow.
 RUN set -eux; \
-    for cmd in control-plane mcp-sensor a2a-sensor mcp-stdio-sensor hopframe hopframe-export dumb-proxy; do \
+    for cmd in control-plane sensor mcp-sensor a2a-sensor mcp-stdio-sensor hopframe hopframe-export dumb-proxy; do \
         go build \
             -trimpath \
             -ldflags "-s -w -X main.version=${VERSION} -X main.commit=${COMMIT} -X main.date=${DATE}" \

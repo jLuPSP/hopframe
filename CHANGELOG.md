@@ -6,6 +6,39 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-06-12
+
+Hardening release. Makes cross-protocol taint actually work in a single deployable,
+adds real A2A task-drift detection, and keeps the shipped detection defaults calibrated.
+
+### Added
+
+- **Combined `sensor` binary.** Runs the MCP and A2A proxies in one process over a
+  shared detection pipeline, so they share one taint tracker. The split `mcp-sensor` /
+  `a2a-sensor` binaries each keep taint state in their own memory, which means a tool
+  result tagged on the MCP wire is invisible to the A2A wire. The combined sensor closes
+  that gap: an MCP tool result reaching an A2A peer is recognized and blocked within one
+  binary. (Cross-replica taint sharing via the control plane is still future work.)
+- **A2A task-drift detection.** The A2A sensor now validates a task's self-declared
+  `x_state_history` (flags `submitted -> completed` with no `working`, and illegal
+  transitions) and checks the responder against the contracted counterparty
+  (`x_responder` vs `x_contracted`). New `policy.block_task_drift` (default `false`,
+  detect-only) opts a deployment in to blocking these.
+
+### Changed
+
+- **Taint matching is transformation-robust.** The taint tracker now shingles over the
+  canonical views of a value (NFKC + zero-width strip, plus base64-decoded payloads),
+  the same normalization the rule engine uses. A secret tagged on the MCP wire is now
+  recognized even if the agent base64-encodes or Unicode-obfuscates it before forwarding.
+
+### Fixed
+
+- **Counterparty false positive.** Task counterparty tracking no longer keys off the
+  request's ephemeral source address, which previously raised a spurious
+  `task.counterparty_changed` on every new connection of a multi-call task. The
+  authoritative peer-swap signal is the declared `x_responder` vs `x_contracted` mismatch.
+
 ## [0.1.0] - 2026-04-27
 
 First tagged alpha. Suitable for design-partner pilots, internal evaluation, homelab and small-team production. Not yet hardened for regulated workloads without the operator's own validation, multi-region active-active, or anything requiring a SOC 2 attestation.

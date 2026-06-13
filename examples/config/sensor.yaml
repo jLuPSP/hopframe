@@ -1,0 +1,35 @@
+# Shared config for the combined sensor (cmd/sensor), which runs the MCP
+# and A2A wires in one process so they share a taint tracker.
+#
+# The two wires' listen/upstream addresses come from env vars (a combined
+# sensor has two of each); this file holds everything they share:
+#
+#   HOPFRAME_MCP_LISTEN_ADDR   (default: listen.address below)
+#   HOPFRAME_MCP_UPSTREAM_URL  (default: upstream.url below)
+#   HOPFRAME_A2A_LISTEN_ADDR   (default: :7081)
+#   HOPFRAME_A2A_UPSTREAM_URL  (required)
+
+sensor:
+  id: hopframe-sensor
+  tenant_id: default
+
+# Default MCP wire (overridable by HOPFRAME_MCP_* env).
+upstream:
+  url: http://upstream-mcp:8080
+  timeout: 30s
+listen:
+  address: ":7080"
+  base_path: /mcp
+
+rules:
+  dirs:
+    - /etc/hopframe/content
+  disabled_rules: []
+
+emitter:
+  sink: stdout
+  buffer_size: 2048
+
+policy:
+  fail_open: true
+  block_task_drift: false   # detect-only by default; opt in per deployment
