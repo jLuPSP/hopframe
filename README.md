@@ -38,7 +38,7 @@ flowchart LR
 ```
 
 <p align="center">
-  <img src="docs/screenshots/demo.gif" alt="make demo: cinematic blind-spot story" width="780">
+  <img src="docs/screenshots/demo.gif" alt="make demo running the full attack story end to end" width="780">
   <br/>
   <em>30 seconds. <code>make demo</code> boots the full stack and plays the attack story end-to-end.</em>
 </p>
@@ -49,7 +49,7 @@ flowchart LR
 - **Cross-protocol leaks get caught.** An MCP tool returns sensitive data; the agent forwards it in an A2A task to an unallowlisted peer. Hopframe blocks the leak. No model-layer filter sees this; it spans two protocol hops.
 - **Every event becomes evidence.** SHA-256 hash-chained log, optional Ed25519 per-record signatures, optional Sigstore Rekor anchoring. Hand a six-month report to a regulator and they re-walk the chain themselves. Selective disclosure: one record can go to an auditor without revealing the rest.
 - **Editable policies, hot-reloaded.** "Block tool poisoning on the github MCP for tenant acme; warn on prompt injection elsewhere." Author in the UI or `POST /v1/policies`, dry-run against the last 1000 events, sensors apply on the next heartbeat with no restart.
-- **Multi-tenant from day one.** Tokens are scope-bound to a tenant; reads filter, writes pin `event.tenant_id`. Same binary serves a homelab and a regulated tenant.
+- **Multi-tenant.** Tokens are scope-bound to a tenant; reads filter, writes pin `event.tenant_id`. Same binary serves a homelab and a regulated tenant.
 
 ## What it looks like
 
@@ -79,7 +79,7 @@ flowchart LR
 
 Pick the path that matches what you already have installed.
 
-**With Go 1.25+** (recommended for the cinematic story; one-line install):
+**With Go 1.25+** (recommended; one-line install):
 
 ```bash
 git clone https://github.com/jLuPSP/hopframe.git
