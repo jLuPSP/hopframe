@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- Retired the price-tier vocabulary, since the repo ships every feature under one license with no gates. The docs now describe deployment **modes** (Demo / Homelab / Secured) instead of tiers; the make flag `ENTERPRISE=1` is now `SECURE=1`; the preset `examples/config/enterprise.env` is now `secured.env`; and `docs/install-tiers.md` is now `docs/install.md`.
+
 ## [0.1.1] - 2026-06-12
 
 Hardening release. Makes cross-protocol taint actually work in a single deployable,

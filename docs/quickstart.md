@@ -38,7 +38,7 @@ Apply to either path. Compose with each other.
 | --- | --- |
 | `UPSTREAM=http://your-mcp:8080` | Sensor forwards to your real MCP server. Drop it to use the bundled stub. |
 | `A2A_UPSTREAM=http://your-a2a:8080` | Adds an A2A sensor on `:7081`. Combine with `UPSTREAM`. |
-| `ENTERPRISE=1` | (`make run` only) auth on, role tokens, signing, sample policies seeded. Tokens print on stdout. Tier 3 surface locally. |
+| `SECURE=1` | (`make run` only) auth on, role tokens, signing, sample policies seeded. Tokens print on stdout. secured mode locally. |
 
 Examples:
 
@@ -49,8 +49,8 @@ make run UPSTREAM=http://your-mcp-server:8080
 # In Docker, pointed at your real MCP
 UPSTREAM=http://your-mcp-server:8080 docker compose up
 
-# Local Tier 3: auth, role tokens, signing
-make run UPSTREAM=http://your-mcp-server:8080 ENTERPRISE=1
+# Local secured mode: auth, role tokens, signing
+make run UPSTREAM=http://your-mcp-server:8080 SECURE=1
 ```
 
 After boot, **point your agent at `http://127.0.0.1:7080/mcp` instead of your MCP's URL.** Hopframe inspects every JSON-RPC request and response in between. The agent and the MCP server don't change.
@@ -153,7 +153,7 @@ docker compose down       # for docker compose up
 
 ## Next steps
 
-- [Install tiers](install-tiers.md) &middot; pick the tier that fits your deployment
+- [Install](install.md) &middot; pick the mode that fits your deployment
 - [Deployment shapes](deployment-shapes.md) &middot; AWS Bedrock, OpenAI, Azure, Vertex
 - [Policies](policies.md) &middot; author and deploy real-traffic policies
 - [Compared to](compare.md) &middot; capability matrix vs every named competitor

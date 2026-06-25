@@ -13,7 +13,7 @@ help:
 	  '                                  instead of UPSTREAM. Drop UPSTREAM to use a' \
 	  '                                  bundled stub. Optional A2A_UPSTREAM=...' \
 	  '                                  wires an A2A sensor on :7081.' \
-	  '                                  ENTERPRISE=1 turns on auth, role tokens,' \
+	  '                                  SECURE=1 turns on auth, role tokens,' \
 	  '                                  signing, sample policies. Tokens print on' \
 	  '                                  stdout. Use this to kick the Tier 3 surface' \
 	  '                                  before Helm-deploying.' \
@@ -85,20 +85,20 @@ bench-corpus:
 #   run   Hopframe in front of an MCP server. Three modifiers:
 #           UPSTREAM=http://your-mcp:8080   point at your real MCP
 #           A2A_UPSTREAM=http://your-a2a    wire an A2A sensor on :7081
-#           ENTERPRISE=1                    auth on, role tokens, signing,
+#           SECURE=1                    auth on, role tokens, signing,
 #                                           sample policies seeded
 #         All three compose. Drop UPSTREAM to use the bundled stub MCP
 #         and play with the UI without any setup. The control plane
 #         comes up with policies, sensor fleet, and signing turned on
-#         in every mode; ENTERPRISE adds the multi-tenant + RBAC
+#         in every mode; SECURE adds the multi-tenant + RBAC
 #         surface (tokens printed on stdout). OIDC and Rekor stay off
 #         in either mode (they need external infra; see
-#         examples/config/enterprise.env to wire them for real).
+#         examples/config/secured.env to wire them for real).
 demo: build
 	./scripts/demo.sh
 
 run: build
-	UPSTREAM='$(UPSTREAM)' A2A_UPSTREAM='$(A2A_UPSTREAM)' ENTERPRISE='$(ENTERPRISE)' ./scripts/run.sh
+	UPSTREAM='$(UPSTREAM)' A2A_UPSTREAM='$(A2A_UPSTREAM)' SECURE='$(SECURE)' ./scripts/run.sh
 
 # Stop any running Hopframe processes. Useful when a previous boot
 # left ports bound and a follow-up `make demo` would otherwise fail

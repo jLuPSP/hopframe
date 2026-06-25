@@ -80,8 +80,8 @@ The repo policy: `gofmt -l .` returns nothing, `go test -race -count=1 ./...` pa
 make demo                                       # cinematic story, bundled stubs, traffic flowing
 make run                                        # boot the stack, no narration, bundled stub MCP
 make run UPSTREAM=http://my-mcp:8080            # sensor forwards to your real MCP
-make run ENTERPRISE=1                           # auth on, role tokens, signing, sample policies
-make run UPSTREAM=http://my-mcp:8080 ENTERPRISE=1  # both
+make run SECURE=1                           # auth on, role tokens, signing, sample policies
+make run UPSTREAM=http://my-mcp:8080 SECURE=1  # both
 make stop                                       # kill all hopframe processes
 ```
 

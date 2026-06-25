@@ -4,8 +4,8 @@ Hopframe is API-first. Every operator action in the UI is a thin client over `/v
 
 ## Conventions
 
-- **Base URL.** `http://your-control-plane:7090` for the demo / homelab tier. HTTPS is supported via `--tls-cert` + `--tls-key` flags on the control-plane binary.
-- **Auth.** Bearer token in the `Authorization` header, or the same value in a `?token=` query param (for SSE clients that cannot set headers), or a `hopframe_session` cookie set by `/auth/login`. When no auth is configured (Tier-1 demo), the API is open.
+- **Base URL.** `http://your-control-plane:7090` for the demo or homelab mode. HTTPS is supported via `--tls-cert` + `--tls-key` flags on the control-plane binary.
+- **Auth.** Bearer token in the `Authorization` header, or the same value in a `?token=` query param (for SSE clients that cannot set headers), or a `hopframe_session` cookie set by `/auth/login`. When no auth is configured (no-auth demo), the API is open.
 - **Content type.** Requests with bodies must send `Content-Type: application/json`. Responses are always JSON, with one exception: `/v1/events.csv` returns CSV and `/v1/events.ndjson` returns NDJSON for export.
 - **Errors.** Plain text on `4xx`/`5xx` for now (the body is the error message). A future v2 will normalize to `{"error": "...", "code": "..."}`. Status codes are accurate today; rely on those.
 - **Pagination.** List endpoints accept `?limit=N` and `?since_seq=N`. Default limit is 50; max 10000.
@@ -243,7 +243,7 @@ Subsequent reads omit `secret`.
 | --- | --- | --- |
 | `POST` | `/auth/login` | Username + password login. Sets `hopframe_session` cookie. |
 | `POST` | `/auth/logout` | Revoke the current session. |
-| `GET` | `/auth/session` | Current caller's identity. Returns `{"role": "anonymous"}` in the no-auth tier. |
+| `GET` | `/auth/session` | Current caller's identity. Returns `{"role": "anonymous"}` in the no-auth mode. |
 | `GET` | `/auth/oidc/login` | Begin OIDC auth-code flow (when configured). |
 | `GET` | `/auth/oidc/callback` | OIDC callback. |
 

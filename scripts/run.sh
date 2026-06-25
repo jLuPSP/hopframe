@@ -15,13 +15,13 @@
 #                   MCP boots so you can poke at the UI without setup.
 #   A2A_UPSTREAM    Optional A2A peer. When set, the :7081 sensor boots
 #                   and forwards to that URL.
-#   ENTERPRISE=1    Turn on the Tier 3 surface: a generated admin
+#   SECURE=1    Turn on the secured mode: a generated admin
 #                   token, two tenant tokens (acme + globex), four
 #                   role tokens (viewer/editor/admin/owner), per-IP
 #                   rate limiting, sample policies, local user
 #                   bootstrap. Tokens print on stdout. OIDC + Rekor
 #                   stay off (they require external infrastructure;
-#                   see examples/config/enterprise.env).
+#                   see examples/config/secured.env).
 
 set -uo pipefail
 
@@ -34,7 +34,7 @@ cd "$ROOT"
 
 UPSTREAM="${UPSTREAM:-}"
 A2A_UPSTREAM="${A2A_UPSTREAM:-}"
-ENTERPRISE="${ENTERPRISE:-${HOPFRAME_ENTERPRISE:-0}}"
+SECURE="${SECURE:-${HOPFRAME_SECURE:-0}}"
 
 # styling
 if [[ -t 1 ]] && [[ -z "${NO_COLOR:-}" ]]; then
@@ -76,7 +76,7 @@ fi
 
 clear 2>/dev/null || true
 echo
-if [[ "$ENTERPRISE" == "1" ]]; then
+if [[ "$SECURE" == "1" ]]; then
   echo "  ${B}${CYAN}H O P F R A M E${R}   ${GREY}run · enterprise${R}"
 else
   echo "  ${B}${CYAN}H O P F R A M E${R}   ${GREY}run${R}"
@@ -91,9 +91,9 @@ else
   echo "  ${D}poke at the UI without any setup. To protect a real MCP:${R}"
   echo "  ${D}  ${R}${B}make run UPSTREAM=http://your-mcp-server:8080${R}"
 fi
-if [[ "$ENTERPRISE" == "1" ]]; then
+if [[ "$SECURE" == "1" ]]; then
   echo
-  echo "  ${D}ENTERPRISE=1: auth on, role tokens, signing on, policies seeded.${R}"
+  echo "  ${D}SECURE=1: auth on, role tokens, signing on, policies seeded.${R}"
 fi
 echo
 
@@ -108,7 +108,7 @@ ADMIN=""
 TENANT_TOKENS=""
 ROLE_TOKENS=""
 ACME=""; GLOBEX=""; VIEWER=""; EDITOR=""; ADMIN_ROLE=""; OWNER=""
-if [[ "$ENTERPRISE" == "1" ]]; then
+if [[ "$SECURE" == "1" ]]; then
   phase "Minting tokens"
   ADMIN=$(mint)
   ACME=$(mint); GLOBEX=$(mint)
@@ -136,14 +136,14 @@ trap cleanup EXIT INT TERM
 phase "Booting services"
 
 # control plane env: always-on Tier 1 (policies, fleet, signing,
-# content), plus enterprise-only blocks when ENTERPRISE=1.
+# content), plus secured-mode-only blocks when SECURE=1.
 cp_env=(
   "HOPFRAME_POLICY_PATH=$DATA/policies.json"
   "HOPFRAME_SENSOR_FLEET=1"
   "HOPFRAME_SIGNING_KEY=$DATA/signing.seed"
   "HOPFRAME_CONTENT_ROOT=$ROOT/content"
 )
-if [[ "$ENTERPRISE" == "1" ]]; then
+if [[ "$SECURE" == "1" ]]; then
   cp_env+=(
     "HOPFRAME_API_TOKEN=$ADMIN"
     "HOPFRAME_TENANT_TOKENS=$TENANT_TOKENS"
@@ -158,7 +158,7 @@ env "${cp_env[@]}" "$BIN/control-plane" --addr :7090 --log "$DATA/events.ndjson"
   > "$DATA/control-plane.log" 2>&1 &
 PIDS+=($!)
 wait_for "http://127.0.0.1:7090/healthz" "control-plane"
-if [[ "$ENTERPRISE" == "1" ]]; then
+if [[ "$SECURE" == "1" ]]; then
   ok "control plane    ${GREY}:7090${R}  ${D}auth required${R}"
 else
   ok "control plane    ${GREY}:7090${R}  ${D}→${R}  ${U}http://127.0.0.1:7090${R}"
@@ -187,12 +187,12 @@ MCP_CFG="$DATA/mcp-sensor.yaml"
   echo "  buffer_size: 1024"
   echo "  spool_path: $DATA/mcp-spool.ndjson"
   echo "  replay_interval: 2s"
-  if [[ "$ENTERPRISE" == "1" ]]; then echo "  bearer_token: $ADMIN"; fi
+  if [[ "$SECURE" == "1" ]]; then echo "  bearer_token: $ADMIN"; fi
   echo "policy: { fail_open: true }"
 } > "$MCP_CFG"
 
 sensor_env=("HOPFRAME_CONTROL_PLANE_URL=http://127.0.0.1:7090")
-[[ "$ENTERPRISE" == "1" ]] && sensor_env+=("HOPFRAME_API_TOKEN=$ADMIN")
+[[ "$SECURE" == "1" ]] && sensor_env+=("HOPFRAME_API_TOKEN=$ADMIN")
 env "${sensor_env[@]}" "$BIN/mcp-sensor" --config "$MCP_CFG" > "$DATA/mcp-sensor.log" 2>&1 &
 PIDS+=($!)
 wait_for "http://127.0.0.1:7080/healthz" "mcp-sensor"
@@ -212,7 +212,7 @@ if [[ -n "$A2A_UPSTREAM" ]]; then
     echo "  buffer_size: 1024"
     echo "  spool_path: $DATA/a2a-spool.ndjson"
     echo "  replay_interval: 2s"
-    if [[ "$ENTERPRISE" == "1" ]]; then echo "  bearer_token: $ADMIN"; fi
+    if [[ "$SECURE" == "1" ]]; then echo "  bearer_token: $ADMIN"; fi
     echo "policy: { fail_open: true }"
   } > "$A2A_CFG"
   env "${sensor_env[@]}" "$BIN/a2a-sensor" --config "$A2A_CFG" > "$DATA/a2a-sensor.log" 2>&1 &
@@ -222,7 +222,7 @@ if [[ -n "$A2A_UPSTREAM" ]]; then
 fi
 
 # Enterprise: seed sample policies on each tenant via the admin token.
-if [[ "$ENTERPRISE" == "1" ]]; then
+if [[ "$SECURE" == "1" ]]; then
   phase "Seeding sample policies"
   seed() {
     curl -sS -X POST http://127.0.0.1:7090/v1/policies \
@@ -240,7 +240,7 @@ fi
 # otherwise we'd be hammering the user's MCP for no reason.
 if [[ "$UPSTREAM" == "http://127.0.0.1:8088" ]]; then
   phase "Starting continuous traffic generator"
-  if [[ "$ENTERPRISE" == "1" ]]; then
+  if [[ "$SECURE" == "1" ]]; then
     "$ROOT/scripts/demo-traffic.sh" --continuous --token "$ADMIN" \
       --mcp http://127.0.0.1:7080/mcp \
       > "$DATA/traffic.log" 2>&1 &
@@ -257,7 +257,7 @@ echo
 hr
 echo
 
-if [[ "$ENTERPRISE" == "1" ]]; then
+if [[ "$SECURE" == "1" ]]; then
   echo "  ${B}Tokens${R}                ${D}use these as Authorization: Bearer <token>${R}"
   echo
   printf "    %-13s %s\n" "admin"        "$ADMIN"
