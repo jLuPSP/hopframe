@@ -44,6 +44,33 @@ type Taint struct {
 	CreatedAt    time.Time           `json:"created_at"`
 }
 
+// FingerprintList returns the taint's shingle fingerprints as a slice,
+// for transport to a shared backend. Order is unspecified.
+func (ta Taint) FingerprintList() []string {
+	out := make([]string, 0, len(ta.Fingerprints))
+	for fp := range ta.Fingerprints {
+		out = append(out, fp)
+	}
+	return out
+}
+
+// Remote is an optional shared backend that lets a taint minted on one
+// sensor be matched on another. It is what closes the cross-replica gap:
+// with separate MCP and A2A sensors, or several replicas, the in-process
+// tracker alone cannot recognize that data read on one process is leaving
+// from another. A Remote exchanges fingerprints, never raw values, so the
+// tagged data never leaves the sensor that read it. Implementations must
+// be safe for concurrent use and must bound their own latency, since Match
+// runs on the forward/block hot path.
+type Remote interface {
+	// Push registers a freshly minted taint with the shared backend.
+	// Best-effort and called asynchronously; failures are non-fatal.
+	Push(agentRun string, t Taint)
+	// Match asks the shared backend whether any candidate fingerprint
+	// overlaps a taint for agentRun. Synchronous and latency-bounded.
+	Match(agentRun string, fingerprints []string) (Taint, bool)
+}
+
 // Tracker is concurrent per-agent-run taint state.
 type Tracker struct {
 	mu        sync.RWMutex
@@ -51,6 +78,16 @@ type Tracker struct {
 	maxPerRun int
 	maxRuns   int
 	ttl       time.Duration
+	remote    Remote
+}
+
+// SetRemote attaches a shared backend. When set, Tag also pushes to it
+// (async) and Match falls back to it on a local miss. Call once at
+// startup, before traffic. Passing nil disables the remote.
+func (t *Tracker) SetRemote(r Remote) {
+	t.mu.Lock()
+	t.remote = r
+	t.mu.Unlock()
 }
 
 // New returns a tracker. maxPerRun bounds taints per agent_run, maxRuns
@@ -93,6 +130,42 @@ func (t *Tracker) Tag(agentRun string, src Source, value string) Taint {
 		taints = taints[len(taints)-t.maxPerRun:]
 	}
 	t.byRun[agentRun] = taints
+	// Mirror to the shared backend so other sensors can match it. The
+	// fingerprints are immutable once minted, so reading them off-lock in
+	// the goroutine is safe. Best-effort: a failed push just means the
+	// cross-replica catch falls back to local-only for this taint.
+	if t.remote != nil {
+		go t.remote.Push(agentRun, taint)
+	}
+	return taint
+}
+
+// TagFingerprints records a taint from already-computed fingerprints,
+// without re-shingling a value. A shared backend uses this to store taints
+// it receives over the wire (fingerprints only, never the raw value).
+func (t *Tracker) TagFingerprints(agentRun string, src Source, sample string, fps []string) Taint {
+	if agentRun == "" || len(fps) == 0 {
+		return Taint{}
+	}
+	set := make(map[string]struct{}, len(fps))
+	for _, fp := range fps {
+		set[fp] = struct{}{}
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.evictIfFullLocked()
+	taint := Taint{
+		ID:           newID(),
+		Source:       src,
+		Fingerprints: set,
+		Sample:       truncate(sample, 80),
+		CreatedAt:    time.Now().UTC(),
+	}
+	taints := append(t.byRun[agentRun], taint)
+	if len(taints) > t.maxPerRun {
+		taints = taints[len(taints)-t.maxPerRun:]
+	}
+	t.byRun[agentRun] = taints
 	return taint
 }
 
@@ -103,13 +176,31 @@ func (t *Tracker) Match(agentRun, value string) (Taint, bool) {
 	if agentRun == "" || value == "" {
 		return Taint{}, false
 	}
+	shingles := shingleSet(value)
+	if ta, ok := t.matchLocal(agentRun, shingles); ok {
+		return ta, true
+	}
+	// Local miss: fall back to the shared backend so a taint minted on
+	// another sensor still catches this leak.
+	t.mu.RLock()
+	r := t.remote
+	t.mu.RUnlock()
+	if r != nil {
+		fps := make([]string, 0, len(shingles))
+		for fp := range shingles {
+			fps = append(fps, fp)
+		}
+		return r.Match(agentRun, fps)
+	}
+	return Taint{}, false
+}
+
+// matchLocal checks a candidate shingle set against the in-process taints
+// for agentRun only.
+func (t *Tracker) matchLocal(agentRun string, shingles map[string]struct{}) (Taint, bool) {
 	t.mu.RLock()
 	taints := append([]Taint(nil), t.byRun[agentRun]...)
 	t.mu.RUnlock()
-	if len(taints) == 0 {
-		return Taint{}, false
-	}
-	shingles := shingleSet(value)
 	for _, ta := range taints {
 		for fp := range shingles {
 			if _, hit := ta.Fingerprints[fp]; hit {
@@ -118,6 +209,20 @@ func (t *Tracker) Match(agentRun, value string) (Taint, bool) {
 		}
 	}
 	return Taint{}, false
+}
+
+// MatchFingerprints matches a candidate fingerprint set against agentRun's
+// taints. A shared backend uses this for queries it receives over the
+// wire; it never consults a remote of its own (it is the terminal store).
+func (t *Tracker) MatchFingerprints(agentRun string, fps []string) (Taint, bool) {
+	if agentRun == "" || len(fps) == 0 {
+		return Taint{}, false
+	}
+	set := make(map[string]struct{}, len(fps))
+	for _, fp := range fps {
+		set[fp] = struct{}{}
+	}
+	return t.matchLocal(agentRun, set)
 }
 
 // MatchAny scans every string in values against the agent_run's taints.

@@ -41,6 +41,7 @@ import (
 	"github.com/jlupsp/hopframe/internal/taskstate"
 	"github.com/jlupsp/hopframe/pkg/a2a"
 	"github.com/jlupsp/hopframe/pkg/detect"
+	policyclient "github.com/jlupsp/hopframe/pkg/policy/client"
 	"github.com/jlupsp/hopframe/pkg/ruleset"
 	"github.com/jlupsp/hopframe/pkg/taint"
 )
@@ -107,6 +108,17 @@ func run(cfgPath, trustDir string) error {
 	tasks := taskstate.New(2*time.Hour, 4096)
 	peers := counterparty.New()
 	taintTracker := taint.New(2*time.Hour, 128, 4096)
+	// One process already shares taint across both wires. When a control
+	// plane is configured, also share it across replicas of this sensor.
+	if base := os.Getenv("HOPFRAME_CONTROL_PLANE_URL"); base != "" {
+		taintTracker.SetRemote(&policyclient.TaintSync{Client: &policyclient.Client{
+			BaseURL:  base,
+			Token:    os.Getenv("HOPFRAME_API_TOKEN"),
+			SensorID: cfg.Sensor.ID,
+			TenantID: cfg.Sensor.TenantID,
+		}})
+		log.Printf("sensor: cross-replica taint sharing via %s", base)
+	}
 	classifier := &detect.HeuristicClassifier{}
 	detectors := []detect.Detector{rs, classifier}
 	if judge := detect.LLMJudgeFromEnv(os.Getenv); judge != nil {

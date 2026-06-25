@@ -25,6 +25,7 @@ import (
 	"github.com/jlupsp/hopframe/control-plane/store"
 	"github.com/jlupsp/hopframe/pkg/audit"
 	"github.com/jlupsp/hopframe/pkg/event"
+	"github.com/jlupsp/hopframe/pkg/taint"
 )
 
 // Server wraps the store with an HTTP API plus a small fan-out hub for
@@ -48,6 +49,7 @@ type Server struct {
 	tokenStore   *TokenStore
 	rulesCache   *rulesCache
 	chainCache   *chainIntegrityCache
+	taints       *taint.Tracker // shared cross-protocol taint registry for sensors
 }
 
 // RecordSink consumes a record from the hub. Used by exporter wiring.
@@ -59,7 +61,12 @@ type RecordSink interface {
 // backward compatibility; the operator UI is now embedded directly via
 // s.uiHandler() inside Routes() and the passed-in handler is ignored.
 func NewServer(s store.AnalyticsStore, _ http.Handler) *Server {
-	return &Server{store: s, hub: newHub(), prom: newPromRegistry()}
+	return &Server{
+		store:  s,
+		hub:    newHub(),
+		prom:   newPromRegistry(),
+		taints: taint.New(2*time.Hour, 128, 4096),
+	}
 }
 
 // SetAuthToken enables bearer-token authentication on /v1/* endpoints.
@@ -145,6 +152,8 @@ func (s *Server) Routes() http.Handler {
 	mux.HandleFunc("/v1/policies/", s.auth(s.requireRole(RoleViewer, s.handlePolicyByID)))
 	mux.HandleFunc("/v1/sensors", s.auth(s.requireRole(RoleViewer, s.handleSensors)))
 	mux.HandleFunc("/v1/sensors/heartbeat", s.auth(s.handleSensorHeartbeat))
+	mux.HandleFunc("/v1/taints", s.auth(s.handleTaintRegister))
+	mux.HandleFunc("/v1/taints/match", s.auth(s.handleTaintMatch))
 	mux.HandleFunc("/v1/content/manifest", s.auth(s.requireRole(RoleViewer, s.handleContentManifest)))
 	mux.HandleFunc("/v1/content/", s.auth(s.requireRole(RoleViewer, s.handleContentFile)))
 	mux.HandleFunc("/v1/rules", s.auth(s.requireRole(RoleViewer, s.handleRules)))

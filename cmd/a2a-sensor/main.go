@@ -30,6 +30,7 @@ import (
 	"github.com/jlupsp/hopframe/internal/taskstate"
 	"github.com/jlupsp/hopframe/pkg/a2a"
 	"github.com/jlupsp/hopframe/pkg/detect"
+	policyclient "github.com/jlupsp/hopframe/pkg/policy/client"
 	"github.com/jlupsp/hopframe/pkg/ruleset"
 	"github.com/jlupsp/hopframe/pkg/taint"
 )
@@ -96,6 +97,18 @@ func run(cfgPath, trustDir string) error {
 	tasks := taskstate.New(2*time.Hour, 4096)
 	peers := counterparty.New()
 	taintTracker := taint.New(2*time.Hour, 128, 4096)
+	// Cross-protocol taint across separate sensor processes: when a control
+	// plane is configured, share taints through it so a result tagged by the
+	// MCP sensor is matchable here on the A2A wire.
+	if base := os.Getenv("HOPFRAME_CONTROL_PLANE_URL"); base != "" {
+		taintTracker.SetRemote(&policyclient.TaintSync{Client: &policyclient.Client{
+			BaseURL:  base,
+			Token:    os.Getenv("HOPFRAME_API_TOKEN"),
+			SensorID: cfg.Sensor.ID,
+			TenantID: cfg.Sensor.TenantID,
+		}})
+		log.Printf("a2a-sensor: cross-protocol taint sharing via %s", base)
+	}
 	classifier := &detect.HeuristicClassifier{}
 	detectors := []detect.Detector{rs, classifier}
 	if judge := detect.LLMJudgeFromEnv(os.Getenv); judge != nil {
