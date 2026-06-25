@@ -101,6 +101,7 @@ nav:
     - Compared to: compare.md
     - Policies: policies.md
     - Threat model: threat-model.md
+    - Value lineage (taint): taint.md
     - Architecture: architecture.md
   - Reference:
     - CLI: cli.md

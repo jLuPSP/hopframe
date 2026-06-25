@@ -46,7 +46,7 @@ Sensitive data flowing from an MCP tool result into an A2A task message destined
 - **Attack pattern.** Agent calls an MCP tool, receives sensitive data, then delegates an A2A task to a peer agent, where that peer is malicious or external.
 - **Why it is invisible to other tools.** MCP gateways see only MCP. A2A gateways see only A2A. LLM guardrails see neither.
 
-**Hopframe coverage:** `pkg/taint` tags MCP tool-call results with shingle fingerprints + source metadata; A2A sensor checks task messages for reuse and blocks when the counterparty is not on the allowlist. **This is unique to Hopframe in this category.**
+**Hopframe coverage:** `pkg/taint` tags MCP tool-call results with shingle fingerprints + source metadata; the A2A sensor checks task messages for reuse and blocks when the counterparty is not on the allowlist. Lineage works within one process (the combined `sensor`) and, opt-in, across separate sensor processes or replicas via the control plane (fingerprints only, never the raw value). **This is unique to Hopframe in this category.** The full threat model for this primitive, including its evasion surface and operational caveats, is in [taint.md](taint.md).
 
 ---
 
