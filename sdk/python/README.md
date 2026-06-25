@@ -104,6 +104,33 @@ Different agent runtimes need different integration points:
 
 Events from the SDK land on the same Hopframe timeline as events from the Go sensors. If you mix MCP and direct-Python tools in one agent run with a shared `agent_run_id`, you get a unified forensic view of the run.
 
+## Run-id propagation
+
+Cross-protocol taint lineage is scoped to an `agent_run_id`: a value read over MCP is only recognized when it leaves over A2A if **both wires carry the same run id**. Rather than thread `run_id=` through every call, set it once with `run_scope` and it becomes ambient for everything emitted inside the block:
+
+```python
+from hopframe import Hopframe, run_scope
+
+hf = Hopframe("http://control-plane:7090")
+with run_scope() as run_id:            # mints one, or pass run_scope("run-x")
+    hf.emit_tool_call(tool="fetch", args={...})   # carries run_id automatically
+    ...                                            # so does every emit in here
+```
+
+The id lives in a `contextvars.ContextVar`, so it is correct across threads and asyncio tasks and nests cleanly. To make your agent's **outbound** MCP/A2A HTTP carry the same id (so the Go sensors correlate the read and the send), install the httpx hook on the client your agent uses for tool calls:
+
+```python
+import httpx
+from hopframe import run_scope
+from hopframe.integrations.httpx import instrument
+
+client = instrument(httpx.Client())   # also works on httpx.AsyncClient
+with run_scope():
+    client.post(mcp_url, json=...)     # sends X-Hopframe-Agent-Run-Id
+```
+
+If you are not on httpx, `run_id_headers()` returns the header dict to merge into any request: `client.post(url, headers=run_id_headers())`.
+
 ## Configuration
 
 | Constructor arg | Env var | Default |

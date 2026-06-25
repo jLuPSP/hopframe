@@ -22,6 +22,7 @@ from dataclasses import asdict
 from typing import Any, Awaitable, Callable, Dict, List, Optional
 
 from hopframe.client import Event, Message, Finding, _new_event_id, _utc_now
+from hopframe.context import current_run_id
 
 Transport = Callable[[Dict[str, Any]], Awaitable[None]]
 
@@ -87,7 +88,7 @@ class AsyncHopframe:
             timestamp=_utc_now(),
             sensor_id=self._sensor_id,
             tenant_id=self._tenant_id,
-            agent_run_id=agent_run_id,
+            agent_run_id=agent_run_id or current_run_id(),
             protocol=protocol,
             direction=direction,
         )

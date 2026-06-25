@@ -23,6 +23,8 @@ from dataclasses import field as dc_field
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from .context import current_run_id
+
 SCHEMA_VERSION = "hopframe.event/v1"
 
 
@@ -130,7 +132,7 @@ class Hopframe:
             timestamp=_utc_now(),
             sensor_id=self._sensor_id,
             tenant_id=self._tenant_id,
-            agent_run_id=agent_run_id,
+            agent_run_id=agent_run_id or current_run_id(),
             protocol=protocol,
             direction=direction,
         )
