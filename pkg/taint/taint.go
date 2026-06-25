@@ -10,8 +10,10 @@
 // and any of its message strings overlaps a known fingerprint, the
 // A2A sensor raises a "cross-protocol taint leaked to <peer>" finding.
 //
-// State is in-process and per-sensor in Phase 2; Phase 3 will sync
-// state via the control plane so leaks across replicas are caught.
+// State is in-process and per-sensor by default. Attaching a Remote
+// (see SetRemote) also shares taint through the control plane so leaks
+// across separate sensor processes or replicas are caught; the wire
+// carries fingerprints only, never the raw tagged value.
 package taint
 
 import (
