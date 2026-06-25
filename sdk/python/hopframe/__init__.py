@@ -26,6 +26,26 @@ use; the control plane doesn't care which side emitted the event.
 
 from .async_client import AsyncHopframe
 from .client import Event, Finding, Hopframe, new_run_id
+from .context import (
+    RUN_ID_HEADER,
+    current_run_id,
+    reset_run_id,
+    run_id_headers,
+    run_scope,
+    set_run_id,
+)
 
-__all__ = ["Hopframe", "AsyncHopframe", "Event", "Finding", "new_run_id"]
+__all__ = [
+    "Hopframe",
+    "AsyncHopframe",
+    "Event",
+    "Finding",
+    "new_run_id",
+    "run_scope",
+    "current_run_id",
+    "run_id_headers",
+    "set_run_id",
+    "reset_run_id",
+    "RUN_ID_HEADER",
+]
 __version__ = "0.1.0"
