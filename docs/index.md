@@ -122,7 +122,7 @@ File-backed NDJSON by default (zero dependencies). Postgres optional, compatible
 
 <div class="hopframe-card" markdown>
 ### I want to use it
-[**Quickstart**](quickstart.md) for the 5-minute path. [**Install tiers**](install-tiers.md) for production deployments. [**Operations**](operations.md) for backup, healthz, capacity.
+[**Quickstart**](quickstart.md) for the 5-minute path. [**Install**](install.md) for production deployments. [**Operations**](operations.md) for backup, healthz, capacity.
 </div>
 
 <div class="hopframe-card" markdown>

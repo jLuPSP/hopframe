@@ -27,7 +27,7 @@ hopframe --server https://hopframe.acme.svc:7090 --token "$TOKEN" events list
 hopframe events list --server=https://hopframe.acme.svc:7090 --token="$TOKEN"
 ```
 
-In the demo tier (no auth), no token is needed.
+In the demo mode (no auth), no token is needed.
 
 ## Output
 

@@ -37,7 +37,7 @@ var dashboardHTML []byte
 // uiHandler returns an http.Handler that serves the embedded operator
 // UI. Requests are gated on a session cookie when the server is
 // configured with any auth (admin token, tenant tokens, role-bound
-// tokens, registered users, or OIDC). The Tier-1 demo (no auth) keeps
+// tokens, registered users, or OIDC). The no-auth demo (no auth) keeps
 // the UI open.
 //
 // Routes:
@@ -137,7 +137,7 @@ func (s *Server) recognizesToken(token string) bool {
 
 // UIHandler is the package-level entry kept for backward compat; it
 // returns an http.Handler bound to a fresh Server with no auth state,
-// suitable for the demo tier where the UI is open. Real deployments
+// suitable for the demo mode where the UI is open. Real deployments
 // reach the UI through Server.Routes() which wires auth-gated UIs.
 func UIHandler() http.Handler {
 	return (&Server{}).uiHandler()

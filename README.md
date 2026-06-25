@@ -13,7 +13,7 @@
 <p align="center">
   <a href="https://jlupsp.github.io/hopframe/">Docs</a> &middot;
   <a href="docs/quickstart.md">Quickstart</a> &middot;
-  <a href="docs/install-tiers.md">Install</a> &middot;
+  <a href="docs/install.md">Install</a> &middot;
   <a href="docs/cli.md">CLI</a> &middot;
   <a href="docs/compare.md">Compare</a> &middot;
   <a href="docs/architecture.md">Architecture</a> &middot;
@@ -101,10 +101,10 @@ After either, repoint your agent at `http://127.0.0.1:7080/mcp` instead of your 
 **Modifiers** (work with both `make run` and `docker compose up`):
 
 - `A2A_UPSTREAM=http://your-a2a-peer:8080` wires an A2A sensor on `:7081` (Docker: `docker compose --profile a2a up`).
-- `ENTERPRISE=1` (make only, today): bearer auth, role tokens (viewer/editor/admin/owner), tenant scoping, signing, sample policies seeded. Tokens print on stdout. OIDC and Rekor stay off (external infra; see [`docs/install-tiers.md`](docs/install-tiers.md)).
+- `SECURE=1` (make only, today): bearer auth, role tokens (viewer/editor/admin/owner), tenant scoping, signing, sample policies seeded. Tokens print on stdout. OIDC and Rekor stay off (external infra; see [`docs/install.md`](docs/install.md)).
 - Drop `UPSTREAM` from the make path to use a bundled stub MCP and poke at the UI without any setup.
 
-For Kubernetes, the [Helm chart](deploy/helm/hopframe/) covers production deployments. Pre-built binaries, multi-arch container images on `ghcr.io/jlupsp/hopframe`, and Sigstore-signed checksums publish on every release tag; see [Releases](https://github.com/jLuPSP/hopframe/releases). Full reference: [`docs/install-tiers.md`](docs/install-tiers.md), [CLI](docs/cli.md), [HTTP API](docs/api.md).
+For Kubernetes, the [Helm chart](deploy/helm/hopframe/) covers production deployments. Pre-built binaries, multi-arch container images on `ghcr.io/jlupsp/hopframe`, and Sigstore-signed checksums publish on every release tag; see [Releases](https://github.com/jLuPSP/hopframe/releases). Full reference: [`docs/install.md`](docs/install.md), [CLI](docs/cli.md), [HTTP API](docs/api.md).
 
 ## Why this exists
 

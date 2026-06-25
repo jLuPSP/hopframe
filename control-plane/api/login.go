@@ -22,7 +22,7 @@ func (s *Server) SetUserStore(us *UserStore) {
 
 // uiRequiresAuth reports whether the operator UI should gate access on
 // a session. Any of: a configured admin token, tenant tokens,
-// role-bound tokens, registered users, or OIDC. The Tier-1 demo
+// role-bound tokens, registered users, or OIDC. The no-auth demo
 // (none of these set) keeps the UI open.
 func (s *Server) uiRequiresAuth() bool {
 	if s.authToken != "" || len(s.tenantTokens) > 0 || len(s.roles) > 0 || s.oidc != nil {
@@ -130,7 +130,7 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 // whether to surface user-management surfaces.
 //
 // Three shapes:
-//   - Tier-1 demo (no auth configured anywhere): role=anonymous, 200.
+//   - no-auth demo (no auth configured anywhere): role=anonymous, 200.
 //   - Auth configured but the request has no recognized credentials: 401.
 //   - Authenticated request: 200 with role + username (when from a user
 //     session) + tenant.

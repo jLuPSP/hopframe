@@ -97,7 +97,7 @@ func OpenUserStore(path string) (*UserStore, error) {
 
 // HasAny reports whether at least one user is registered. The UI uses
 // this to decide whether to enforce login: with no users registered,
-// the demo tier UX (no auth) is preserved.
+// the demo mode UX (no auth) is preserved.
 func (s *UserStore) HasAny() bool {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
