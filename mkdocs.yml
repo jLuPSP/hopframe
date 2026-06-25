@@ -93,7 +93,7 @@ nav:
   - Home: index.md
   - Quickstart: quickstart.md
   - Install:
-    - Install tiers: install-tiers.md
+    - Modes: install.md
     - Deployment shapes: deployment-shapes.md
     - Vertex AI Agent Engine: agent-engine.md
   - Concepts:
