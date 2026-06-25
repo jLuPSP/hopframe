@@ -146,6 +146,8 @@ func run(cfgPath string) error {
 			SensorID: cfg.Sensor.ID,
 			TenantID: cfg.Sensor.TenantID,
 		}
+		taintTracker.SetRemote(&policyclient.TaintSync{Client: pc})
+		log.Printf("mcp-sensor: cross-protocol taint sharing via %s", base)
 		startedAt := time.Now().UTC()
 		hostname, _ := os.Hostname()
 		hbBuilder := func() policyclient.HeartbeatBody {

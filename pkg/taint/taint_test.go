@@ -98,3 +98,56 @@ func TestEvictionAtMaxRuns(t *testing.T) {
 		t.Fatalf("expected 2 runs after eviction, got %d", got)
 	}
 }
+
+func TestFingerprintRoundTrip(t *testing.T) {
+	src := New(time.Hour, 64, 1024)
+	orig := src.Tag("r", Source{Protocol: "mcp"}, "internal-hostname db-primary.corp.example.internal:5432")
+	// A shared backend stores by fingerprints only (never the raw value).
+	cp := New(time.Hour, 64, 1024)
+	cp.TagFingerprints("r", orig.Source, orig.Sample, orig.FingerprintList())
+	if _, ok := cp.MatchFingerprints("r", orig.FingerprintList()); !ok {
+		t.Fatalf("expected a fingerprint round-trip match")
+	}
+	if _, ok := cp.MatchFingerprints("other-run", orig.FingerprintList()); ok {
+		t.Fatalf("fingerprints must not match across agent runs")
+	}
+}
+
+// sharedRemote stands in for the control plane: a single tracker that two
+// sensor-side trackers share, exchanging fingerprints only.
+type sharedRemote struct{ cp *Tracker }
+
+func (s *sharedRemote) Push(agentRun string, t Taint) {
+	s.cp.TagFingerprints(agentRun, t.Source, t.Sample, t.FingerprintList())
+}
+func (s *sharedRemote) Match(agentRun string, fps []string) (Taint, bool) {
+	return s.cp.MatchFingerprints(agentRun, fps)
+}
+
+func TestCrossReplicaTaintViaRemote(t *testing.T) {
+	remote := &sharedRemote{cp: New(time.Hour, 64, 1024)}
+	mcp := New(time.Hour, 64, 1024) // sensor that reads the secret over MCP
+	mcp.SetRemote(remote)
+	a2a := New(time.Hour, 64, 1024) // a *different* sensor that sees the A2A egress
+	a2a.SetRemote(remote)
+
+	secret := "svc_tok_FAKE_0000_DO_NOT_USE_example_only"
+	mcp.Tag("run-x", Source{Protocol: "mcp", Method: "tools/call", Field: "result.content.0.text"}, secret)
+
+	// Tag's push to the shared backend is async; poll until the A2A sensor,
+	// which has no local taint for this run, matches the egress via the remote.
+	matched := false
+	for i := 0; i < 200; i++ {
+		if _, ok := a2a.Match("run-x", "forwarding to peer: "+secret); ok {
+			matched = true
+			break
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	if !matched {
+		t.Fatalf("expected cross-replica match via the shared remote")
+	}
+	if _, ok := a2a.Match("run-y", secret); ok {
+		t.Fatalf("must not match across agent runs")
+	}
+}
