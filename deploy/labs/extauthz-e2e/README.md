@@ -1,49 +1,47 @@
 # ext_authz end-to-end lab
 
-A real [Envoy](https://www.envoyproxy.io/) calling Hopframe over the Envoy
-**HTTP external-authorization** contract, in front of a stub MCP server. This
-is the integration proof for the `mcp-extauthz` surface: not a unit test with
-a fake gateway, an actual gateway making allow/deny calls into Hopframe.
+A real [Envoy](https://www.envoyproxy.io/) running Hopframe as its
+authorization check, in front of a stub MCP server. Run it to see the
+`mcp-extauthz` surface block a live attack through an actual gateway.
 
 ```
-client --POST MCP--> envoy --ext_authz(HTTP, body attached)--> hopframe-authz (mcp-extauthz)
-                       |  (on 200 allow)
-                       +--route--> upstream (stub-mcp-server)
+client ──POST MCP──> Envoy ──"allow or block?"──> Hopframe (mcp-extauthz)
+                       │  allowed
+                       └──route──> MCP server (stub)
 ```
 
-## What it proves
-
-| Case | Request | Expected | Why |
-| --- | --- | --- | --- |
-| 1 | benign `tools/call` | **200**, stub answers | pipeline allows, Envoy routes upstream |
-| 2 | `tools/call` with a canonical AWS key | **403**, JSON-RPC blocked-by-policy | request-side detection + hard deny via ext_authz |
-| 3 | `tools/list` | **200** | ext_authz is request-side: it allows the request and never sees the response, so a poisoned description would pass here. The documented blind spot, see [docs/surface-matrix.md](../../../docs/surface-matrix.md). |
-
-Case 3 is the honest part. To make the blind spot concrete, run the stub with
-a poisoned catalog (`command: ["--addr", ":8088", "--poisoned"]` on the
-`upstream` service): the smuggled `<system>` directive in a tool description
-sails through ext_authz untouched, exactly the response-side gap that the
-native sensor / gateway (`mcp-sensor`, `mcp-gateway`) closes.
-
-## Run it (local Docker)
+## Run it
 
 ```sh
 docker compose up -d --build
-./run-test.sh                       # or: ./run-test.sh http://localhost:9101
-docker logs lab-extauthz-e2e-hopframe-authz   # every verdict, as JSON events
-docker compose down -v --remove-orphans --rmi local
+./run-test.sh                  # sends three requests through Envoy on :9101
+docker compose down -v --rmi local
 ```
 
-Host ports: `9101` MCP ingress, `9190` Envoy admin (`/clusters`, `/stats`).
+## What you'll see
 
-## Teardown (leave nothing behind)
+| Request | Result |
+|---|---|
+| Normal tool call | **allowed** — the MCP server answers (`200`) |
+| Tool call carrying an AWS key | **blocked** — `403`, the server is never reached |
+| `tools/list` with a poisoned description | **allowed through** — ext_authz only checks the request, not the reply |
+
+That last row is the surface's known limit: ext_authz inspects requests, not
+replies, so a poisoned response slips past it. The full gateway and inline
+sensor (`mcp-gateway`, `mcp-sensor`) close that gap. See
+[docs/surface-matrix.md](../../../docs/surface-matrix.md).
+
+To watch it happen, flip the stub to its poisoned catalog
+(`command: ["--addr", ":8088", "--poisoned"]` on the `upstream` service) and
+re-run the `tools/list` request.
+
+## Ports
+
+`9101` MCP entry · `9190` Envoy admin (`/clusters`, `/stats`).
+
+Everything runs on an isolated Docker network with no local-network values
+(service names only), and tears down by label:
 
 ```sh
-docker compose down -v --remove-orphans --rmi local
-# safety net: sweep by label even if the compose file is gone
-docker ps -aq        --filter label=com.jlu.lab=extauthz-e2e | xargs -r docker rm -f
-docker network ls -q --filter label=com.jlu.lab=extauthz-e2e | xargs -r docker network rm
+docker ps -aq --filter label=com.jlu.lab=extauthz-e2e | xargs -r docker rm -f
 ```
-
-The lab carries no local-network values; every address is a Docker service
-name on its own isolated `labnet`.

@@ -1,110 +1,79 @@
-# Per-surface capability matrix
+# Where Hopframe runs
 
-Hopframe is one detection brain with several data-plane surfaces. The brain
-is `internal/pipeline.Pipeline` (the four-stage detection pipeline plus
-quarantine, taint, task-state, and the audit emitter). Every surface is a
-thin adapter that hands the pipeline a parsed protocol message and acts on
-the verdict it returns. The pipeline does not own networking; the adapters
-do. That is why the same detection and the same audit log are reachable from
-a package import, an inline proxy, a multiplexing gateway, or someone else's
-gateway.
+Hopframe is one detection engine you can run in several places. The engine
+(rules, quarantine, cross-protocol taint, the signed audit log) is the same
+everywhere. You just pick **where it sits**, based on where your agents and
+tools live and how much enforcement you need.
 
-What differs between surfaces is the **enforcement ceiling**, and it is not
-marketing, it is mechanism. A surface can only carry a feature if it provides
-what the feature needs. Three things decide it:
+There are four ways to run it today, plus one on the way.
 
-1. **Response visibility** — can the surface see the upstream's reply, not
-   just the request?
-2. **Body mutation** — can the surface rewrite a message in flight, not just
-   allow or deny it?
-3. **Cross-message state** — does the surface sit somewhere that accumulates
-   per-agent-run state across many messages?
+## 1. In your agent's code — the SDK
 
-Sort any feature by those three axes and you know which surface carries it.
+A package you import into your agent, in your agent's own language:
 
-## The surfaces
+- **Python:** `pip install hopframe`
+- **TypeScript / JavaScript:** `npm install @hopframe/sdk`
 
-| Surface | Mechanism | Owns data path? | Status |
-| --- | --- | --- | --- |
-| **Package SDK** (`hopframe-py`) | in-process framework callbacks emit events | no | shipping |
-| **ext_authz attach** (`internal/extauthz`, `cmd/mcp-extauthz`) | Envoy HTTP external-authorization call-out: allow / deny | no (the gateway does) | shipping |
-| **ext_proc attach** | Envoy external-processing gRPC stream: inspect + mutate both directions | no (the gateway does) | planned |
-| **Native inline sensor** (`internal/proxy`, `cmd/mcp-sensor`) | reverse proxy on the wire | yes | shipping |
-| **Native gateway** (`internal/gateway`, `cmd/mcp-gateway`) | inline proxy with a routes table over N upstreams | yes | shipping |
+It hooks your agent's tool calls (LangChain, LangGraph, OpenAI Assistants,
+Vercel AI SDK, or direct calls) and reports them to the Hopframe timeline.
+Lowest friction: no infrastructure to run, no traffic to re-point. The
+trade-off is that it **observes and advises** rather than hard-blocking. Best
+when you can't sit on the wire, or you just want visibility first.
 
-The native sensor and native gateway are the same surface at different
-arities: the gateway is the sensor with a routes table, one proxy per route
-sharing one pipeline, so its capability column is identical.
+## 2. Bolt onto a gateway you already run — ext_authz
 
-## The matrix
+If you already run Envoy (or Istio, Gloo, Emissary, Envoy AI Gateway),
+Hopframe plugs in as an authorization check. For every inbound MCP message
+the gateway asks Hopframe "allow or block?" and Hopframe answers after running
+the full detection pipeline. No changes to your agents, and it writes the same
+audit log. The limit: it only sees messages going **to** the tool, not the
+tool's replies coming back. (`cmd/mcp-extauthz`.)
 
-Legend: **✓** full · **◐** partial · **✗** not on this surface · **(p)** planned (ext_proc).
+## 3. Hopframe as your front door — the gateway
 
-| Capability | Package SDK | ext_authz | ext_proc | Native sensor / gateway |
-| --- | :---: | :---: | :---: | :---: |
-| Inbound request detection (`tools/call` args) | ✓ | ✓ | ✓ (p) | ✓ |
-| Four-stage pipeline (regex, heuristic, LLM judge) | ✓ | ✓ | ✓ (p) | ✓ |
-| Hard block (deny a request) | ◐ soft | ✓ | ✓ (p) | ✓ |
-| Response detection (`tools/list` descriptions, tool results) | ✓ | ✗ | ✓ (p) | ✓ |
-| Quarantine **enforce** (block a `tools/call`) | ◐ | ✓ | ✓ (p) | ✓ |
-| Quarantine **populate** (learn from `tools/list` response) | ✓ | ✗ | ✓ (p) | ✓ |
-| Cross-protocol taint **tag** (on MCP results) | ✓ | ✗ | ✓ (p) | ✓ |
-| Cross-protocol taint **check / block** (A2A leak) | ◐ | ◐ runs but empty | ✓ (p) | ✓ |
-| SSE chunk inspect **and replace** | n/a | ✗ | ◐ (p) streaming is the hard part | ✓ |
-| Synthesize a block body | ◐ | ◐ deny body only | ✓ (p) | ✓ |
-| Agent-card validation + signature | ✗ | ✗ | ✓ (p) | ✓ |
-| A2A task-state / counterparty drift | ◐ | ◐ request-side only | ✓ (p) | ✓ |
-| Audit log emission (hash-chained, signed) | ✓ | ✓ | ✓ (p) | ✓ |
-| `agent_run_id` correlation across the hop | ✓ | ✓ | ✓ (p) | ✓ |
+Hopframe itself stands in front of many MCP servers at one address, routes
+each request to the right one, and inspects everything in **both**
+directions. Full power, and state (quarantine, taint) is shared across all
+your tools. You host it. (`cmd/mcp-gateway`.)
 
-### Why ext_authz drops the differentiators
+## 4. In front of one tool — the inline sensor
 
-ext_authz is request-side and decision-only: it sees a buffered request and
-returns allow or deny. It never sees a response. The two stateful
-differentiators each **learn on the response and act on the request**, so
-ext_authz gets the act without the learn:
+Hopframe sits directly between an agent and a single MCP or A2A server. Full
+power for that one wire, simplest "drop it in front" shape.
+(`cmd/mcp-sensor`, `cmd/a2a-sensor`, `cmd/mcp-stdio-sensor`.)
 
-- **Quarantine** populates from the `tools/list` *response* and enforces by
-  blocking a `tools/call` *request*. ext_authz can enforce an existing entry
-  but can never see the response that would fill the set.
-- **Cross-protocol taint** tags leaf strings in MCP tool-call *responses* and
-  checks A2A *requests* for reuse. The check is request-side so it runs, but
-  it has nothing to match because the tagging step happened on a response
-  ext_authz never saw.
+## 5. *(Coming)* Bolt onto your gateway, with reply inspection — ext_proc
 
-So ext_authz is the **breadth** surface: block known-bad inputs, emit the
-audit log, correlate runs, attach to the whole Envoy ecosystem with no
-per-gateway code. It is not the surface for taint or tool-poisoning
-quarantine. Deploy it knowing that.
+Like option 2, but Hopframe also sees and can rewrite the tool's replies, so
+it reaches full power through your existing gateway. Planned; not built yet.
 
-### Why ext_proc reaches near-parity
+## At a glance
 
-ext_proc sees and can mutate both directions and supports streaming, so it
-provides response visibility, mutation, and (because it is a centralized
-call-out) a natural home for cross-message state. It can carry essentially
-the full feature set. The honest caveats are engineering, not capability:
-streaming-body mutation (the SSE rewrite) is the fiddly part, every message
-pays a network hop, and the stateful subsystems must live in the call-out
-service with their own availability story.
+Legend: ✓ yes · ~ partial / advisory · ✗ no
 
-### Why the native surfaces are the gold reference
+| | SDK (Python / TS) | ext_authz | ext_proc *(planned)* | Gateway / inline sensor |
+|---|:--:|:--:|:--:|:--:|
+| No infrastructure to run | ✓ | ✗ | ✗ | ✗ |
+| No agent code changes | ✗ | ✓ | ✓ | ✓ |
+| Hard-blocks bad requests | ~ | ✓ | ✓ | ✓ |
+| Inspects tool **replies** (poisoned descriptions, leaked results) | ~ | ✗ | ✓ | ✓ |
+| Cross-protocol taint (MCP → A2A) | ~ | ✗ | ✓ | ✓ |
+| Tamper-evident audit log | ✓ | ✓ | ✓ | ✓ |
 
-The native sensor and gateway own the data path, run in-process at
-microsecond latency, and have no response blind spot. Everything in the
-matrix is ✓ by construction because the adapter is the proxy, not a call-out
-into someone else's proxy.
+The pattern: **the SDK is easiest but advisory; ext_authz is broad and
+no-code but request-only; the gateway and inline sensor are full-power but you
+host them.** That single fact, that ext_authz never sees the reply, is why a
+poisoned tool *description* slips past it but is caught by the gateway or
+sensor. The `deploy/labs/extauthz-e2e/` lab demonstrates exactly this.
 
-## Choosing a surface
+## How to pick
 
-- **Lowest friction, no re-pointing, fail-safe** → Package SDK. Observe and
-  soft-enforce inside the agent. The land-and-expand on-ramp.
-- **Block + audit + correlate everywhere, instantly, riding your existing
-  gateway** → ext_authz attach. Accept the request-side ceiling.
-- **Full fidelity through your existing Envoy mesh** → ext_proc attach (when
-  shipped). The bridge you build when topology leaves no other way in.
-- **Full fidelity, you own the path, one address in front of many upstreams**
-  → Native gateway. The depth surface.
+- **Just want visibility, fastest start?** SDK.
+- **Already run an Envoy-style gateway and want to block bad requests with no
+  code changes?** ext_authz.
+- **Want the full protection and are happy to host it?** Gateway (many tools)
+  or inline sensor (one tool).
 
-The surfaces stack. Running the SDK and a native surface on the same
-`agent_run_id` correlates in-process attribution (which tool, which callback)
-with on-the-wire truth (what actually crossed), all on one forensic timeline.
+The surfaces stack. Run the SDK *and* a gateway on the same agent run and you
+get the agent's-eye view (which tool, which step) lined up with the on-the-wire
+truth (what actually crossed), on one timeline.
