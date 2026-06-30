@@ -6,9 +6,21 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-06-29
+
+### Added
+
+- **Gateway data-plane surfaces.** Two new ways to run Hopframe over the same detection pipeline. `mcp-extauthz` is an Envoy HTTP external-authorization adapter, so any Envoy-based gateway (Envoy, Istio, Gloo, Emissary) can get an allow/deny decision on inbound MCP with no per-gateway code. `mcp-gateway` is a native multiplexer that fronts many MCP upstreams at one address with full inline fidelity and shared quarantine/taint state. See [docs/surface-matrix.md](docs/surface-matrix.md) for the per-surface capability map and `deploy/labs/extauthz-e2e/` for a real-Envoy end-to-end lab.
+- **Python SDK published to PyPI.** The release workflow now builds and publishes the `hopframe` package via PyPI Trusted Publishing on tagged releases.
+
 ### Changed
 
 - Retired the price-tier vocabulary, since the repo ships every feature under one license with no gates. The docs now describe deployment **modes** (Demo / Homelab / Secured) instead of tiers; the make flag `ENTERPRISE=1` is now `SECURE=1`; the preset `examples/config/enterprise.env` is now `secured.env`; and `docs/install-tiers.md` is now `docs/install.md`.
+
+### Fixed
+
+- **Docker base images** for the compose deploy bumped to `golang:1.25-alpine`; the `1.23` pin no longer satisfied `go.mod`'s `go >= 1.25` under alpine's `GOTOOLCHAIN=local`.
+- **`/healthz` answers `HEAD`** as well as `GET` on the ext_authz and gateway surfaces, so spider-style health probes do not read as unhealthy.
 
 ## [0.1.1] - 2026-06-12
 
@@ -140,5 +152,7 @@ First tagged alpha. Suitable for design-partner pilots, internal evaluation, hom
 - Source-available, not OSI-approved open source. Detection content (`content/`) and benchmark corpus (`bench/corpus/`) are released without the production-use restriction in the BSL.
 - There are no proprietary feature gates.
 
-[Unreleased]: https://github.com/jLuPSP/hopframe/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/jLuPSP/hopframe/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/jLuPSP/hopframe/compare/v0.1.1...v0.2.0
+[0.1.1]: https://github.com/jLuPSP/hopframe/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/jLuPSP/hopframe/releases/tag/v0.1.0

@@ -6,7 +6,7 @@ The Go sensors (`mcp-sensor`, `a2a-sensor`, `mcp-stdio-sensor`) handle the proto
 
 ## Install
 
-The package is not yet published to PyPI. Until the v0.1 release, install from the repo:
+The package is not yet published to PyPI. Until the first PyPI release, install from the repo:
 
 ```bash
 pip install -e "git+https://github.com/jLuPSP/hopframe.git#egg=hopframe&subdirectory=sdk/python"
@@ -14,7 +14,7 @@ pip install -e "git+https://github.com/jLuPSP/hopframe.git#egg=hopframe[langchai
 pip install -e "git+https://github.com/jLuPSP/hopframe.git#egg=hopframe[openai]&subdirectory=sdk/python"
 ```
 
-Once v0.1 ships:
+Once published to PyPI:
 
 ```bash
 pip install hopframe                  # base, stdlib only
