@@ -155,7 +155,7 @@ func run(cfgPath string) error {
 				SensorID:      cfg.Sensor.ID,
 				TenantID:      cfg.Sensor.TenantID,
 				Hostname:      hostname,
-				BinaryVersion: "0.1.0",
+				BinaryVersion: "0.2.0",
 				StartedAt:     startedAt,
 			}
 		}

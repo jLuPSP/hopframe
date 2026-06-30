@@ -6,7 +6,8 @@ This is the JS counterpart to the Python SDK at `sdk/python`. The base layer is 
 
 ## Install
 
-The package is not yet published to npm. Until v0.1 ships, link from the repo:
+> **Coming soon to npm.** The Python SDK (`hopframe`) ships to PyPI first; the
+> `@hopframe/sdk` npm release is on the way. Until then, link it from the repo:
 
 ```bash
 git clone https://github.com/jLuPSP/hopframe.git
@@ -18,7 +19,7 @@ npm link            # makes @hopframe/sdk available to local projects
 
 Then in your project: `npm link @hopframe/sdk`.
 
-Once v0.1 ships:
+Once it is published to npm (coming soon):
 
 ```bash
 npm install @hopframe/sdk

@@ -6,7 +6,7 @@ The Go sensors (`mcp-sensor`, `a2a-sensor`, `mcp-stdio-sensor`) handle the proto
 
 ## Install
 
-The package is not yet published to PyPI. Until the v0.1 release, install from the repo:
+The package is not yet published to PyPI. Until the first PyPI release, install from the repo:
 
 ```bash
 pip install -e "git+https://github.com/jLuPSP/hopframe.git#egg=hopframe&subdirectory=sdk/python"
@@ -14,7 +14,7 @@ pip install -e "git+https://github.com/jLuPSP/hopframe.git#egg=hopframe[langchai
 pip install -e "git+https://github.com/jLuPSP/hopframe.git#egg=hopframe[openai]&subdirectory=sdk/python"
 ```
 
-Once v0.1 ships:
+Once published to PyPI:
 
 ```bash
 pip install hopframe                  # base, stdlib only
@@ -146,6 +146,41 @@ If you are not on httpx, `run_id_headers()` returns the header dict to merge int
 `async_delivery=True` (default) ships events on a background thread so `emit()` never blocks the agent. Events past `buffer_size` are dropped (count tracked by `hf.stats()`).
 
 Call `hf.close()` at the end of your program to drain pending events.
+
+## Publishing (maintainers)
+
+The name `hopframe` is unclaimed on PyPI as of this writing. Reserve it before
+the first public release, or someone else can take it once the project gets
+attention.
+
+Build and validate locally (this produces a wheel + sdist and checks that the
+metadata and this README render correctly on PyPI):
+
+```bash
+cd sdk/python
+python -m pip install --upgrade build twine
+python -m build                 # -> dist/hopframe-<version>.whl and .tar.gz
+python -m twine check dist/*
+```
+
+For the first release, dry-run against TestPyPI before the real index:
+
+```bash
+python -m twine upload --repository testpypi dist/*
+pip install --index-url https://test.pypi.org/simple/ hopframe   # smoke test
+python -m twine upload dist/*                                     # the real upload
+```
+
+After that first upload reserves the name, releases are automated: pushing a
+`vX.Y.Z` tag runs the `pypi-sdk` job in
+[`.github/workflows/release.yaml`](../../.github/workflows/release.yaml),
+which builds and publishes via PyPI **Trusted Publishing** (OIDC, no API token
+stored in the repo). One-time setup on PyPI: add a trusted publisher for
+project `hopframe` pointing at this repo, workflow `release.yaml`, environment
+`pypi`.
+
+Keep `version` in `pyproject.toml` in sync with the tag, the build reads the
+version from there.
 
 ## Status
 
