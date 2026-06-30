@@ -119,3 +119,34 @@ jobs:
           DIGEST: ${{ steps.push.outputs.digest }}
         run: |
           cosign sign --yes ghcr.io/jlupsp/hopframe@${DIGEST}
+
+  # Publish the Python SDK to PyPI on real tag pushes, via Trusted Publishing
+  # (OIDC) so no PyPI token is stored in the repo. One-time setup: add a trusted
+  # publisher on PyPI for project `hopframe` -> this repo / workflow
+  # `release.yaml` / environment `pypi`. The package version comes from
+  # sdk/python/pyproject.toml, keep it in sync with the tag.
+  pypi-sdk:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') }}
+    permissions:
+      id-token: write
+    environment:
+      name: pypi
+      url: https://pypi.org/p/hopframe
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: build sdist + wheel
+        working-directory: sdk/python
+        run: |
+          python -m pip install --upgrade build
+          python -m build
+
+      - name: publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: sdk/python/dist
