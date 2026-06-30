@@ -1,0 +1,15 @@
+# Build the ext_authz adapter binary. Alpine final image (not distroless) so
+# the container ships wget for the compose healthcheck against /healthz.
+FROM golang:1.25-alpine AS build
+WORKDIR /src
+COPY go.mod go.sum* ./
+RUN go mod download || true
+COPY . .
+RUN CGO_ENABLED=0 go build -o /out/mcp-extauthz ./cmd/mcp-extauthz
+
+FROM alpine:3.20
+RUN apk add --no-cache wget
+COPY --from=build /out/mcp-extauthz /usr/local/bin/mcp-extauthz
+EXPOSE 9180
+ENTRYPOINT ["/usr/local/bin/mcp-extauthz"]
+CMD ["--config", "/etc/hopframe/extauthz.yaml"]

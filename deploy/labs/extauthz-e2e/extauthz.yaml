@@ -1,0 +1,29 @@
+# Hopframe config for the ext_authz adapter in this lab.
+#
+# The upstream and listen blocks are present only to satisfy the shared
+# config loader; mcp-extauthz never forwards (the gateway does), and the
+# listen address is overridden by HOPFRAME_EXTAUTHZ_LISTEN_ADDR. Emitter is
+# stdout so `docker logs lab-extauthz-e2e-hopframe-authz` shows every verdict.
+# fail_open is false so a real block returns a real deny.
+sensor:
+  id: lab-extauthz-e2e
+  tenant_id: dev
+
+upstream:
+  url: http://unused.invalid
+  timeout: 30s
+
+listen:
+  address: ":9180"
+  base_path: /mcp
+
+rules:
+  dirs:
+    - /etc/hopframe/content
+
+emitter:
+  sink: stdout
+  buffer_size: 1024
+
+policy:
+  fail_open: false

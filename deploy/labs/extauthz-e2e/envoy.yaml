@@ -1,0 +1,98 @@
+# Envoy bootstrap for the ext_authz e2e lab.
+#
+# One HTTP listener on :10000. Every request is first sent to the Hopframe
+# ext_authz service (HTTP) with its body attached; on a 200 the request is
+# routed to the stub MCP upstream, on a non-2xx Envoy returns the auth
+# server's blocked-by-policy body to the client. This is the real Envoy
+# external-authorization contract, not a simulation.
+admin:
+  address:
+    socket_address: { address: 0.0.0.0, port_value: 9901 }
+
+static_resources:
+  listeners:
+    - name: mcp_ingress
+      address:
+        socket_address: { address: 0.0.0.0, port_value: 10000 }
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: mcp_ingress
+                codec_type: AUTO
+                route_config:
+                  name: local_route
+                  virtual_hosts:
+                    - name: mcp
+                      domains: ["*"]
+                      routes:
+                        - match: { prefix: "/" }
+                          route: { cluster: mcp_upstream }
+                http_filters:
+                  - name: envoy.filters.http.ext_authz
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
+                      transport_api_version: V3
+                      # Buffer and forward the request body so Hopframe can
+                      # inspect the MCP JSON-RPC payload, not just headers.
+                      with_request_body:
+                        max_request_bytes: 65536
+                        allow_partial_message: true
+                        pack_as_bytes: true
+                      # A Hopframe outage should not silently allow traffic in
+                      # this lab; we want to observe real allow/deny.
+                      failure_mode_allow: false
+                      http_service:
+                        server_uri:
+                          uri: http://hopframe-authz:9180
+                          cluster: hopframe_authz
+                          timeout: 2s
+                        path_prefix: /authz
+                        authorization_request:
+                          allowed_headers:
+                            patterns:
+                              - exact: content-type
+                                ignore_case: true
+                              - exact: x-hopframe-agent-run-id
+                                ignore_case: true
+                        authorization_response:
+                          # Propagate the run id to the upstream on allow.
+                          allowed_upstream_headers:
+                            patterns:
+                              - exact: x-hopframe-agent-run-id
+                                ignore_case: true
+                          # Let the deny body + decision headers reach the client.
+                          allowed_client_headers:
+                            patterns:
+                              - exact: content-type
+                                ignore_case: true
+                              - exact: x-hopframe-decision
+                                ignore_case: true
+                              - exact: x-hopframe-finding
+                                ignore_case: true
+                  - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+
+  clusters:
+    - name: mcp_upstream
+      type: STRICT_DNS
+      lb_policy: ROUND_ROBIN
+      load_assignment:
+        cluster_name: mcp_upstream
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address: { address: upstream, port_value: 8088 }
+    - name: hopframe_authz
+      type: STRICT_DNS
+      lb_policy: ROUND_ROBIN
+      load_assignment:
+        cluster_name: hopframe_authz
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address: { address: hopframe-authz, port_value: 9180 }
