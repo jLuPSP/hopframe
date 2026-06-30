@@ -166,10 +166,14 @@ func TestExtAuthzMalformedFailOpen(t *testing.T) {
 func TestExtAuthzHealthz(t *testing.T) {
 	srv, _, cleanup := newServer(t, true)
 	defer cleanup()
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
-	srv.ServeHTTP(rec, req)
-	if rec.Code != http.StatusOK {
-		t.Fatalf("healthz = %d", rec.Code)
+	// Both GET and HEAD must return 200: health probes (wget --spider, k8s
+	// httpGet) use one or the other, and a non-200 here reads as unhealthy.
+	for _, m := range []string{http.MethodGet, http.MethodHead} {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(m, "/healthz", nil)
+		srv.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("healthz %s = %d, want 200", m, rec.Code)
+		}
 	}
 }

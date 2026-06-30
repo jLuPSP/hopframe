@@ -164,6 +164,21 @@ func TestGatewayLongestPrefixWins(t *testing.T) {
 	}
 }
 
+func TestGatewayHealthz(t *testing.T) {
+	up := markerUpstream(t, "A")
+	defer up.Close()
+	gw, cleanup := newGateway(t, []Route{{Name: "a", Prefix: "/mcp/a", Upstream: up.URL}})
+	defer cleanup()
+	for _, m := range []string{http.MethodGet, http.MethodHead} {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(m, "/healthz", nil)
+		gw.ServeHTTP(rec, req)
+		if rec.Code != http.StatusOK {
+			t.Fatalf("healthz %s = %d, want 200", m, rec.Code)
+		}
+	}
+}
+
 func TestGatewayRejectsBadConfig(t *testing.T) {
 	rs, err := ruleset.LoadDir("../../content")
 	if err != nil {
