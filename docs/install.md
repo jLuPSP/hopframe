@@ -2,6 +2,8 @@
 
 Hopframe uses one binary set with progressively more features enabled. Three deployment shapes cover the realistic cases. Pick the one that matches you, then move up later without changing the binary. The same binary runs every shape. The env vars determine the shape. Everything Hopframe ships is in this repo under one license. There are no paid tiers or feature gates. "Mode" below describes how much you have configured.
 
+This page covers how much you configure. For where Hopframe sits (the SDK inside your agent, ext_authz on a gateway you already run, the native gateway, or an inline sensor), see [Where it runs](surface-matrix.md).
+
 | Mode | For | Auth | Audit | Policy plane | OIDC | Rekor | Operational notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Demo | One developer evaluating on a laptop | None | Hash-chained log | Optional | No | No | `make demo` brings up the whole stack on localhost |

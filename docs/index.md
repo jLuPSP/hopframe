@@ -122,7 +122,7 @@ The default is file-backed NDJSON (zero dependencies). Optional Postgres is comp
 
 <div class="hopframe-card" markdown>
 ### I want to use it
-[**Quickstart**](quickstart.md) provides the 5-minute path. [**Install**](install.md) covers production deployments. [**Operations**](operations.md) covers backup, healthz, and capacity.
+[**Quickstart**](quickstart.md) provides the 5-minute path. [**Where it runs**](surface-matrix.md) compares the SDK, ext_authz, gateway, and inline sensor surfaces. [**Install**](install.md) covers production deployments. [**Operations**](operations.md) covers backup, healthz, and capacity.
 </div>
 
 <div class="hopframe-card" markdown>

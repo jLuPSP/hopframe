@@ -14,6 +14,7 @@
   <a href="https://jlupsp.github.io/hopframe/">Docs</a> &middot;
   <a href="docs/quickstart.md">Quickstart</a> &middot;
   <a href="docs/install.md">Install</a> &middot;
+  <a href="docs/surface-matrix.md">Where it runs</a> &middot;
   <a href="docs/cli.md">CLI</a> &middot;
   <a href="docs/compare.md">Compare</a> &middot;
   <a href="docs/architecture.md">Architecture</a> &middot;
