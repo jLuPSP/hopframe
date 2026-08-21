@@ -1,13 +1,13 @@
 # HTTP API reference
 
-Hopframe is API-first. Every operator action in the UI is a thin client over `/v1/*`. The CLI ([docs/cli.md](cli.md)) wraps the same endpoints. SDKs ([Python](https://github.com/jLuPSP/hopframe/tree/main/sdk/python), [TypeScript](https://github.com/jLuPSP/hopframe/tree/main/sdk/typescript)) emit events to the ingest endpoint and otherwise stay out of your way.
+Hopframe is API-first. Every operator action in the UI is a thin client over `/v1/*`. The CLI ([docs/cli.md](cli.md)) wraps the same endpoints. SDKs ([Python](https://github.com/jLuPSP/hopframe/tree/main/sdk/python), [TypeScript](https://github.com/jLuPSP/hopframe/tree/main/sdk/typescript)) only emit events to the ingest endpoint.
 
 ## Conventions
 
 - **Base URL.** `http://your-control-plane:7090` for the demo or homelab mode. HTTPS is supported via `--tls-cert` + `--tls-key` flags on the control-plane binary.
-- **Auth.** Bearer token in the `Authorization` header, or the same value in a `?token=` query param (for SSE clients that cannot set headers), or a `hopframe_session` cookie set by `/auth/login`. When no auth is configured (no-auth demo), the API is open.
-- **Content type.** Requests with bodies must send `Content-Type: application/json`. Responses are always JSON, with one exception: `/v1/events.csv` returns CSV and `/v1/events.ndjson` returns NDJSON for export.
-- **Errors.** Plain text on `4xx`/`5xx` for now (the body is the error message). A future v2 will normalize to `{"error": "...", "code": "..."}`. Status codes are accurate today; rely on those.
+- **Auth.** Send a bearer token in the `Authorization` header, the same value in a `?token=` query param (for SSE clients that cannot set headers), or a `hopframe_session` cookie set by `/auth/login`. The API is open when no auth is configured (no-auth demo).
+- **Content type.** Requests with bodies must send `Content-Type: application/json`. Responses are JSON except for exports. `/v1/events.csv` returns CSV, and `/v1/events.ndjson` returns NDJSON.
+- **Errors.** The API returns plain text on `4xx`/`5xx` for now (the body is the error message). A future v2 will normalize to `{"error": "...", "code": "..."}`. Status codes are accurate today, so rely on them.
 - **Pagination.** List endpoints accept `?limit=N` and `?since_seq=N`. Default limit is 50; max 10000.
 - **Rate limiting.** When `HOPFRAME_RATE_LIMIT_RPS` is set, `/v1/*` enforces a per-IP token bucket. Rejected requests return `429 Too Many Requests` with `Retry-After: 1`.
 
@@ -99,11 +99,11 @@ Server-Sent Events live stream. Subscribe with `?backlog=N` to receive the most 
 
 ### `GET /v1/events.csv` / `GET /v1/events.ndjson`
 
-Same filters as `GET /v1/events` but output is a downloadable file with a chain-proof trailer. The trailer binds the export to a specific chain head, so an auditor can verify the file was not altered after it left your control plane. Headers `X-Hopframe-Chain-Head` / `X-Hopframe-Exported-At` / `X-Hopframe-Record-Count` mirror the trailer fields.
+The same filters as `GET /v1/events` produce a downloadable file with a chain-proof trailer. The trailer binds the export to a specific chain head. An auditor can verify that the file was not altered after it left your control plane. Headers `X-Hopframe-Chain-Head` / `X-Hopframe-Exported-At` / `X-Hopframe-Record-Count` mirror the trailer fields.
 
 ### `GET /v1/records/{seq}`
 
-Per-record inspector. Returns the canonical bytes, the per-record Ed25519 signature (when a signing key is configured), and a Merkle proof tying the record to a snapshot of recent records. The UI's `/records` page verifies the signature in the browser.
+The per-record inspector returns the canonical bytes and the per-record Ed25519 signature (when a signing key is configured). It also returns a Merkle proof that ties the record to a snapshot of recent records. The UI's `/records` page verifies the signature in the browser.
 
 ```json
 {
@@ -148,7 +148,7 @@ A policy body:
 }
 ```
 
-Resolution rule: most-specific scope wins (server > sensor > tenant > org default); within ties, the strongest mode wins. See [Policies](policies.md) for the full semantics.
+The resolution rule selects the most-specific scope (server > sensor > tenant > org default). Within ties, the strongest mode wins. See [Policies](policies.md) for the full semantics.
 
 ## Sensors
 

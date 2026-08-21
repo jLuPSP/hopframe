@@ -1,6 +1,6 @@
 # CLI
 
-`hopframe` is the operator CLI. It wraps the same `/v1/*` API the operator UI consumes, so any operation you can do in the UI is reproducible from a shell script or a CI step.
+`hopframe` is the operator CLI. It wraps the same `/v1/*` API that the operator UI consumes. You can reproduce any UI operation from a shell script or a CI step.
 
 ## Install
 
@@ -15,7 +15,7 @@ Add `bin/` to your `PATH` for convenience.
 
 ## Configure
 
-Two environment variables, each with a flag override. Flags can appear before or after the subcommand and accept either `--flag value` or `--flag=value`.
+Two environment variables configure the CLI, and each has a flag override. Flags can appear before or after the subcommand and accept either `--flag value` or `--flag=value`.
 
 | Variable | Flag | Default | Purpose |
 | --- | --- | --- | --- |
@@ -31,7 +31,7 @@ In the demo mode (no auth), no token is needed.
 
 ## Output
 
-JSON to stdout. Pipe through `jq` for human consumption:
+The CLI writes JSON to stdout. Pipe it through `jq` for human consumption:
 
 ```bash
 hopframe events list --action block | jq '.records | length'
@@ -129,7 +129,7 @@ User accounts only exist when the control plane is configured with `HOPFRAME_USE
 
 ## Forensic export
 
-Forensic export bundles use a separate binary because their output is a directory, not JSON:
+Forensic export bundles use a separate binary because they produce a directory:
 
 ```bash
 hopframe-export \
@@ -142,4 +142,4 @@ hopframe-export \
   --sign-key data/signing.seed
 ```
 
-The output directory contains a `manifest.json`, one canonical-bytes file per record, signatures, a Merkle root, and a `VERIFY.md` an auditor can follow without contacting the control plane.
+The output directory contains a `manifest.json`, one canonical-bytes file per record, signatures, a Merkle root, and a `VERIFY.md`. An auditor can follow it without contacting the control plane.

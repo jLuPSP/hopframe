@@ -1,6 +1,6 @@
 # Quickstart
 
-Five minutes from clone to running. No accounts, no signups, no sudo.
+You can go from clone to running in five minutes. You need no accounts, signups, or sudo.
 
 ## Pick your path
 
@@ -14,7 +14,7 @@ Five minutes from clone to running. No accounts, no signups, no sudo.
     make demo
     ```
 
-    `make demo` builds binaries (~10s the first time, then cached), boots the full stack with bundled stubs, plays the cinematic blind-spot attack story, seeds four sample policies, and starts a continuous traffic generator so the UI never goes silent.
+    `make demo` builds binaries (~10s the first time, then cached) and boots the full stack with bundled stubs. It plays the cinematic blind-spot attack story, seeds four sample policies, and starts a continuous traffic generator so the UI never goes silent.
 
 === "With Docker"
 
@@ -26,19 +26,19 @@ Five minutes from clone to running. No accounts, no signups, no sudo.
     docker compose up
     ```
 
-    First boot compiles every binary inside the multi-stage build (~1-2 minutes), then runs control plane + sensor against a bundled stub MCP. No Go install required.
+    The first boot compiles every binary inside the multi-stage build (~1-2 minutes). It then runs the control plane + sensor against a bundled stub MCP. You do not need to install Go.
 
 Open [http://127.0.0.1:7090](http://127.0.0.1:7090) for the UI.
 
 ## Common modifiers
 
-Apply to either path. Compose with each other.
+These modifiers apply to either path and work together.
 
 | Variable | Effect |
 | --- | --- |
 | `UPSTREAM=http://your-mcp:8080` | Sensor forwards to your real MCP server. Drop it to use the bundled stub. |
 | `A2A_UPSTREAM=http://your-a2a:8080` | Adds an A2A sensor on `:7081`. Combine with `UPSTREAM`. |
-| `SECURE=1` | (`make run` only) auth on, role tokens, signing, sample policies seeded. Tokens print on stdout. secured mode locally. |
+| `SECURE=1` | (`make run` only) Enables auth, role tokens, signing, and seeded sample policies. Tokens print on stdout. This runs secured mode locally. |
 
 Examples:
 
@@ -57,13 +57,13 @@ After boot, **point your agent at `http://127.0.0.1:7080/mcp` instead of your MC
 
 ## Tour the UI
 
-[http://127.0.0.1:7090](http://127.0.0.1:7090) is the operator UI. Pages:
+[http://127.0.0.1:7090](http://127.0.0.1:7090) is the operator UI. It includes these pages:
 
 - **`/`** &middot; live event stream
 - **`/dashboard`** &middot; time-series charts (events per minute, top categories, top sensors, action mix)
 - **`/policies`** &middot; the four sample policies, plus a form to author your own
 - **`/sensors`** &middot; fleet inventory, drift markers
-- **`/records`** &middot; per-record signature inspector. Click a record; the Ed25519 signature is verified in the browser via SubtleCrypto, so you don't have to trust the page
+- **`/records`** &middot; per-record signature inspector. Click a record to verify the Ed25519 signature in the browser via SubtleCrypto. You do not have to trust the page
 - **`/rules`** &middot; the loaded rule pack. Filter by category / severity / mode. Each row expands to show the actual regex
 - **`/audit`** &middot; signed-export builder. CSV / NDJSON with a chain-proof trailer
 - **`/settings`** &middot; users + API tokens (only meaningful when auth is configured)
@@ -94,11 +94,11 @@ Watch the events appear in the live stream.
 ./bin/hopframe sensors list
 ```
 
-Configure with `HOPFRAME_SERVER` (default `http://127.0.0.1:7090`) and `HOPFRAME_API_TOKEN` (no token needed for the demo). Full reference: [CLI](cli.md).
+Configure the CLI with `HOPFRAME_SERVER` (default `http://127.0.0.1:7090`) and `HOPFRAME_API_TOKEN` (no token needed for the demo). See the full [CLI](cli.md) reference.
 
 ## Author a policy
 
-In the UI: open `/policies`, fill the form, hit Create. Or via CLI:
+In the UI, open `/policies`, fill the form, and select Create. You can also use the CLI:
 
 ```bash
 cat > my-policy.json <<'EOF'
@@ -114,9 +114,9 @@ EOF
 ./bin/hopframe policies create -f my-policy.json
 ```
 
-The sensor refetches policies on its next heartbeat (within 30 seconds) and starts blocking matching traffic.
+The sensor refetches policies on its next heartbeat (within 30 seconds). It then starts blocking matching traffic.
 
-Dry-run before flipping to block:
+Run a dry run before changing the policy to block:
 
 ```bash
 ./bin/hopframe policies preview <policy-id>
@@ -143,13 +143,13 @@ docker compose down       # for docker compose up
     The multi-stage Dockerfile compiles every binary from source. ~1-2 minutes on a modern laptop, then cached. After the first build, restarts are seconds.
 
 ??? question "I want to skip the cinematic narration"
-    Use `make run` instead of `make demo`. Same stack, no narration. Good for "actually use the product."
+    Use `make run` instead of `make demo`. It runs the same stack without narration.
 
 ??? question "I want a quiet UI (no traffic generator)"
     `./scripts/demo.sh --no-traffic`.
 
 ??? question "I want to use the Postgres backend"
-    Set `HOPFRAME_STORE_DSN=postgres://user:pass@host:5432/db?sslmode=require`. Compatible with Cloud SQL, AWS RDS, Azure Database for PostgreSQL, Aiven, Neon, Supabase. The Postgres backend uses byte-identical hash-chain semantics. See [Operations](operations.md#backend-choice-file-vs-postgres).
+    Set `HOPFRAME_STORE_DSN=postgres://user:pass@host:5432/db?sslmode=require`. It is compatible with Cloud SQL, AWS RDS, Azure Database for PostgreSQL, Aiven, Neon, and Supabase. The Postgres backend uses byte-identical hash-chain semantics. See [Operations](operations.md#backend-choice-file-vs-postgres).
 
 ## Next steps
 

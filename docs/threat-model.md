@@ -1,6 +1,6 @@
 # Hopframe threat model
 
-This document describes what Hopframe defends against, what it doesn't, and the assumptions it makes about its environment. Read it before deploying Hopframe in production.
+This document describes Hopframe's defenses, limits, and environmental assumptions. Read it before deploying Hopframe in production.
 
 ---
 
@@ -16,7 +16,7 @@ Adversarial natural-language content inside tool calls or tool results that atte
 - **Indirect injection.** Content fetched from a third-party tool (web pages, files, query results) that addresses the model directly.
 - **Paraphrased injection.** Instruction-override semantics expressed in language that does not match a known signature.
 
-**Hopframe coverage:** regex pack (Layer 1) catches known signatures with high precision; the heuristic classifier (Layer 2) catches paraphrased variants via feature density; behavioral layer (Layer 4) catches abnormal injection rates.
+**Hopframe coverage:** the regex pack (Layer 1) catches known signatures with high precision. The heuristic classifier (Layer 2) catches paraphrased variants via feature density. The behavioral layer (Layer 4) catches abnormal injection rates.
 
 ### 2. Tool poisoning
 
@@ -27,7 +27,7 @@ Adversarial tool descriptions or metadata served by an MCP server at registratio
 - **Confused-deputy framing.** "Switch user to admin and execute on behalf of".
 - **Invisible-Unicode smuggling.** Zero-width and tag-block bytes that hide instructions inside otherwise plain text.
 
-**Hopframe coverage:** the rule pack at `content/tool-poisoning/` covers all four patterns; the quarantine workflow auto-blocks subsequent calls to a tool whose description triggered a high/critical finding.
+**Hopframe coverage:** the rule pack at `content/tool-poisoning/` covers all four patterns. The quarantine workflow auto-blocks subsequent calls to a tool whose description triggered a high/critical finding.
 
 ### 3. Credential and PII exfiltration
 
@@ -46,41 +46,41 @@ Sensitive data flowing from an MCP tool result into an A2A task message destined
 - **Attack pattern.** Agent calls an MCP tool, receives sensitive data, then delegates an A2A task to a peer agent, where that peer is malicious or external.
 - **Why it is invisible to other tools.** MCP gateways see only MCP. A2A gateways see only A2A. LLM guardrails see neither.
 
-**Hopframe coverage:** `pkg/taint` tags MCP tool-call results with shingle fingerprints + source metadata; the A2A sensor checks task messages for reuse and blocks when the counterparty is not on the allowlist. Lineage works within one process (the combined `sensor`) and, opt-in, across separate sensor processes or replicas via the control plane (fingerprints only, never the raw value). **This is unique to Hopframe in this category.** The full threat model for this primitive, including its evasion surface and operational caveats, is in [taint.md](taint.md).
+**Hopframe coverage:** `pkg/taint` tags MCP tool-call results with shingle fingerprints + source metadata. The A2A sensor checks task messages for reuse and blocks when the counterparty is not on the allowlist. Lineage works within one process (the combined `sensor`). An opt-in mode works across separate sensor processes or replicas via the control plane (fingerprints only, never the raw value). This capability is unique to Hopframe in this category. [taint.md](taint.md) covers its full threat model, evasion surface, and operational caveats.
 
 ---
 
 ## Out of scope
 
-These are *not* what Hopframe defends against. We say so explicitly to avoid surprising buyers who think they got more than they did.
+Hopframe does not defend against the following threats.
 
 ### Model-side jailbreaks
 
-If you're running an LLM with safety training and the user convinces it to misbehave purely through prose, that's the model provider's problem (Anthropic / OpenAI / your fine-tuning vendor). Hopframe inspects protocol traffic, not LLM responses to direct chat. Pair Hopframe with an LLM guardrail (Lakera, Protect AI, NeMo) for that surface.
+If a user convinces an LLM with safety training to misbehave purely through prose, the model provider handles that threat (Anthropic / OpenAI / your fine-tuning vendor). Hopframe inspects protocol traffic. It does not inspect LLM responses to direct chat. Pair Hopframe with an LLM guardrail (Lakera, Protect AI, NeMo) for that surface.
 
 ### Application logic flaws in your tools
 
-If your `fetch` tool has SSRF, your `database` tool has SQLi, or your custom MCP server has authn bypass, those are bugs in your tools and not threats Hopframe will catch. Use the same SAST, DAST, and dependency-scanning tooling you would use for any HTTP service.
+Hopframe will not catch SSRF in your `fetch` tool, SQLi in your `database` tool, or authn bypass in your custom MCP server. These are bugs in your tools. Use the same SAST, DAST, and dependency-scanning tooling you would use for any HTTP service.
 
 ### Authentication and authorization
 
-Hopframe forwards Authorization headers but does not validate or refresh tokens. OAuth flows, token rotation, and mTLS to the upstream are your responsibility. The control plane has bearer-token auth on `/v1/*` and supports mTLS for sensor-to-control-plane traffic. That is where the auth story stops.
+Hopframe forwards Authorization headers but does not validate or refresh tokens. You are responsible for OAuth flows, token rotation, and mTLS to the upstream. The control plane has bearer-token auth on `/v1/*` and supports mTLS for sensor-to-control-plane traffic.
 
 ### Resource abuse
 
-Hopframe applies a per-IP rate limit to `/v1/*` writes when `HOPFRAME_RATE_LIMIT_RPS` is set, and rejected requests are counted in `hopframe_rate_limited_total`. That is a guard for the control plane, not for your downstream tools. The detection pipeline holds at ~115k evals/sec, so a misbehaving agent making 10,000 tool calls per second will overwhelm your tools well before the sensor is the bottleneck, and the sensor will not stop the abuse on its own. For tool-side quota and runaway-loop protection, pair Hopframe with an API gateway that rate-limits the upstream.
+Hopframe applies a per-IP rate limit to `/v1/*` writes when `HOPFRAME_RATE_LIMIT_RPS` is set. It counts rejected requests in `hopframe_rate_limited_total`. This guard protects the control plane. It does not protect your downstream tools. The detection pipeline holds at ~115k evals/sec. A misbehaving agent making 10,000 tool calls per second will overwhelm your tools before the sensor becomes the bottleneck. The sensor will not stop the abuse on its own. For tool-side quota and runaway-loop protection, pair Hopframe with an API gateway that rate-limits the upstream.
 
 ### Network-layer threats
 
-DDoS, TLS termination, IP allowlists, and DNS rebinding are out of scope. Hopframe sits behind a real WAF (Cloudflare, BIG-IP) or inside a VPC. We assume the network edge is handled elsewhere.
+DDoS, TLS termination, IP allowlists, and DNS rebinding are out of scope. Run Hopframe behind a WAF (Cloudflare, BIG-IP) or inside a VPC. Another system must handle the network edge.
 
 ### Compliance auto-pilot
 
-We make evidence verifiable. We do not make controls automatic. For SOC2, HIPAA, or FedRAMP, Hopframe is one piece of the evidence chain, not the chain itself.
+Hopframe makes evidence verifiable. It does not automate controls. For SOC2, HIPAA, or FedRAMP, Hopframe provides one piece of the evidence chain.
 
 ### Detection content gaps
 
-Hopframe ships 58 rules and a heuristic classifier scoring F1=1.0 on the 84-sample seed corpus at `bench/corpus/v1.jsonl`. Both are growing. **Until the registry hits the 200-rule target and is validated against public attack libraries (HarmBench, JailbreakBench, AgentDojo), expect false negatives on novel attacks.** Open issues / PRs at the main repo when you find them.
+Hopframe ships 58 rules and a heuristic classifier scoring F1=1.0 on the 84-sample seed corpus at `bench/corpus/v1.jsonl`. Both are growing. **Expect false negatives on novel attacks while the registry is below its 200-rule target. Expect them until validation against public attack libraries (HarmBench, JailbreakBench, AgentDojo) is complete.** Open issues / PRs at the main repo when you find them.
 
 ---
 

@@ -1,6 +1,6 @@
 # Developer guide
 
-For contributors hacking on Hopframe itself. If you only want to use it, start with [Quickstart](quickstart.md).
+This guide is for contributors working on Hopframe itself. If you only want to use it, start with [Quickstart](quickstart.md).
 
 ## Repo layout
 
@@ -89,13 +89,13 @@ make stop                                       # kill all hopframe processes
 
 ## Architecture in one paragraph
 
-A sensor (`internal/proxy`, `internal/a2aproxy`, `internal/stdioproxy`) sits inline on protocol traffic and forwards it to an upstream. Before forwarding, the sensor runs the detection pipeline (`internal/pipeline`) which composes detectors from `pkg/detect` (heuristic classifier, optional LLM judge), the rule pack (`pkg/ruleset`), the cross-protocol taint tracker (`pkg/taint`), and the tool-quarantine set (`internal/quarantine`). The pipeline produces a verdict; the policy resolver (`pkg/policy`) picks a final mode (monitor / warn / block) based on which policies match the event scope. Findings flow to the control plane (`control-plane/api`) which writes them to a SHA-256 hash-chained log (`control-plane/store`) and broadcasts to live UI subscribers via SSE. Operators interact via the embedded UI (`control-plane/api/*.html`) or the CLI (`cmd/hopframe`) which both speak the same `/v1/*` API.
+A sensor (`internal/proxy`, `internal/a2aproxy`, `internal/stdioproxy`) sits inline on protocol traffic and forwards it to an upstream. Before forwarding, the sensor runs the detection pipeline (`internal/pipeline`). The pipeline composes detectors from `pkg/detect` (heuristic classifier, optional LLM judge), the rule pack (`pkg/ruleset`), the cross-protocol taint tracker (`pkg/taint`), and the tool-quarantine set (`internal/quarantine`). The pipeline produces a verdict. The policy resolver (`pkg/policy`) picks a final mode (monitor / warn / block) based on which policies match the event scope. Findings flow to the control plane (`control-plane/api`). It writes them to a SHA-256 hash-chained log (`control-plane/store`) and broadcasts them to live UI subscribers via SSE. Operators use the embedded UI (`control-plane/api/*.html`) or the CLI (`cmd/hopframe`). Both use the same `/v1/*` API.
 
 Full diagram: [Architecture](architecture.md).
 
 ## Adding a detection rule
 
-The fastest contribution. Rules live in `content/<category>/*.yaml`:
+Detection rules are the fastest contribution. They live in `content/<category>/*.yaml`:
 
 ```yaml
 - id: pi.contrib.your_rule_id
@@ -113,7 +113,7 @@ Add a benchmark sample at `bench/corpus/v1.jsonl`:
 {"id":"pi-099","category":"prompt-injection","label":"malicious","text":"<the attack string>"}
 ```
 
-Then `make bench-corpus` to verify the rule fires on the sample without breaking precision.
+Then run `make bench-corpus` to verify that the rule fires on the sample without breaking precision.
 
 Format constraints:
 
@@ -140,7 +140,7 @@ If you are adding something CRUDable (like users, tokens, or policies), the exis
 - `control-plane/api/users.go` and `users_api.go`: bcrypt-hashed accounts, sessions, CRUD.
 - `control-plane/api/tokens.go`: first-class API tokens with hash-only persistence.
 
-The pattern: a thread-safe in-memory store, atomic JSON file writes, an optional listener for audit-chain emission, and HTTP handlers that wrap the store.
+The pattern uses a thread-safe in-memory store, atomic JSON file writes, an optional listener for audit-chain emission, and HTTP handlers that wrap the store.
 
 ## Wire schema
 
@@ -154,14 +154,14 @@ Bump `event.SchemaVersion` only on breaking changes. Additive fields are fine wi
 
 ## Releasing
 
-Releases are gated on `workflow_dispatch` against `.github/workflows/release.yaml`. The flow:
+Releases are gated on `workflow_dispatch` against `.github/workflows/release.yaml`. Follow this flow:
 
 1. Update [CHANGELOG.md](https://github.com/jLuPSP/hopframe/blob/main/CHANGELOG.md) with the unreleased changes promoted to a new version section.
 2. Tag the commit (`git tag v0.x.0`).
 3. Push the tag.
 4. Trigger the release workflow manually with `dry_run=false`.
 
-Goreleaser cross-compiles every binary for linux/darwin/windows on amd64/arm64, generates SBOMs via syft, and signs the checksums with cosign keyless via the GitHub OIDC token.
+Goreleaser cross-compiles every binary for linux/darwin/windows on amd64/arm64. It generates SBOMs via syft and signs the checksums with cosign keyless via the GitHub OIDC token.
 
 For a snapshot build (no publish), trigger with `dry_run=true`.
 
@@ -186,7 +186,7 @@ make validate VALIDATE_CMD="npx -y @modelcontextprotocol/server-filesystem /tmp"
 
 ## Documentation
 
-The site at https://jlupsp.github.io/hopframe/ is built from the Markdown files in `docs/` via MkDocs Material. To preview locally:
+MkDocs Material builds the site at https://jlupsp.github.io/hopframe/ from the Markdown files in `docs/`. To preview locally:
 
 ```bash
 pip install mkdocs-material pymdown-extensions

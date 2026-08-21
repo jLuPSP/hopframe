@@ -78,21 +78,21 @@ A few cross-cutting primitives sit alongside the layers:
 
 ## Cross-protocol correlation
 
-Sensors propagate `X-Hopframe-Agent-Run-Id`. If the inbound request carries one, the sensor uses it; otherwise it generates one with a `run-` prefix. The header rides through to the upstream and back to the client. The control plane indexes events by this id, so a single agent run's events from MCP, A2A, behavior, and the Python SDK all land on the same forensic timeline (`/v1/agent-runs/{id}/timeline`).
+Sensors propagate `X-Hopframe-Agent-Run-Id`. If the inbound request carries one, the sensor uses it. Otherwise, it generates one with a `run-` prefix. The header rides through to the upstream and back to the client. The control plane indexes events by this id. Events from MCP, A2A, behavior, and the Python SDK for one agent run all land on the same forensic timeline (`/v1/agent-runs/{id}/timeline`).
 
-This is the primitive behind the headline differentiator: **MCP and A2A traffic for the same agent run are correlated automatically**. No competitor offers this because no competitor sits on both protocols.
+This mechanism **automatically correlates MCP and A2A traffic for the same agent run**. No competitor offers this because no competitor sits on both protocols.
 
 ---
 
 ## The audit log
 
-`control-plane/store` is an append-only NDJSON file with SHA-256 hash chaining. Each record's hash includes the previous record's hash. Three guarantees follow:
+`control-plane/store` is an append-only NDJSON file with SHA-256 hash chaining. Each record's hash includes the previous record's hash. The design provides these guarantees:
 
-1. **Tamper detection**, modifying any record breaks the chain visibly the next time `Verify()` walks it.
-2. **Signed exports**, every CSV / NDJSON download from `/v1/events.{ndjson,csv}` carries a chain-proof trailer (head hash, export timestamp, seq range) binding the file to a specific point in chain history.
-3. **Continuous trust signal**, the UI's *integrity verified* badge polls `/v1/verify` every 60s. Goes red when broken.
+1. **Tamper detection.** Modifying any record visibly breaks the chain the next time `Verify()` walks it.
+2. **Signed exports.** Every CSV / NDJSON download from `/v1/events.{ndjson,csv}` carries a chain-proof trailer (head hash, export timestamp, seq range). The trailer binds the file to a specific point in chain history.
+3. **Continuous trust signal.** The UI's *integrity verified* badge polls `/v1/verify` every 60s. It goes red when broken.
 
-Retention rotation drops records older than the configured window. To preserve chain integrity after rotation, a sidecar `<log>.genesis` file records the prev-hash of the first surviving record, and `Verify()` uses that as the chain-start anchor.
+Retention rotation drops records older than the configured window. A sidecar `<log>.genesis` file preserves chain integrity after rotation by recording the prev-hash of the first surviving record. `Verify()` uses that value as the chain-start anchor.
 
 ---
 
@@ -139,17 +139,17 @@ Sensor-side env vars: `HOPFRAME_API_TOKEN` (bearer to the control plane), `HOPFR
 
 A few decisions worth documenting:
 
-- **Inline mesh, not pre-deployment scanner.** We sit on the wire because attacks happen at runtime. A static scanner can tell you what a tool description *might* do. Only an inline mesh can stop what it *is* doing.
-- **Cross-protocol from day one.** Everyone else is one-protocol. The cross-protocol surface is where confused-deputy and capability-laundering attacks live, and that is the moat.
-- **Open content registry.** The rule packs are YAML, live in the repo, and are contributable by PR. Cloudflare WAF rules, OWASP, and ClamAV all demonstrate that open detection content is a stronger long-term moat than closed.
-- **Cryptographic accountability.** A hash-chained log plus signed exports turns Hopframe into an evidence-grade tool, which is the wedge into compliance-grade buyers.
-- **Layered detection at cost-aware speeds.** Regex first (5µs), classifier second (30µs), LLM judge optional (500ms), behavioral central (continuous). Most competitors run a single layer at the wrong cost; we don't.
+- **Inline mesh.** We sit on the wire because attacks happen at runtime. A static scanner can identify what a tool description *might* do. Only an inline mesh can stop what it *is* doing.
+- **Cross-protocol from day one.** Everyone else supports one protocol. Confused-deputy and capability-laundering attacks live on the cross-protocol surface.
+- **Open content registry.** The rule packs are YAML, live in the repo, and accept contributions by PR. Cloudflare WAF rules, OWASP, and ClamAV all demonstrate that open detection content creates a stronger long-term moat than closed content.
+- **Cryptographic accountability.** A hash-chained log plus signed exports turns Hopframe into an evidence-grade tool for compliance-grade buyers.
+- **Layered detection at cost-aware speeds.** Regex runs first (5µs), the classifier runs second (30µs), the optional LLM judge follows (500ms), and behavioral detection runs centrally (continuous). Most competitors run a single layer at the wrong cost.
 
 ---
 
 ## Where this is going
 
-This document describes the v0.1 alpha shape. The three pillars (editable policy plane, enterprise control plane, cryptographic audit-grade evidence) are all in-tree. What's still ahead is mostly operational: the file-backed audit log moves to a Postgres-backed HA control plane while preserving hash-chain semantics; that is Phase 2C in [roadmap.md](roadmap.md) and the chunk that turns "alpha that runs on a laptop" into "regulated buyer can run this in production at scale." Other roadmap items: long-term archival to object storage, cryptographic per-tenant scoping (separate signing keys per tenant), and a SOC 2 Type II audit trail for the hosted offering.
+This document describes the v0.1 alpha shape. The three pillars (editable policy plane, enterprise control plane, cryptographic audit-grade evidence) are all in-tree. The remaining work is mostly operational. The file-backed audit log moves to a Postgres-backed HA control plane while preserving hash-chain semantics. That work is Phase 2C in [roadmap.md](roadmap.md). It moves the product from "alpha that runs on a laptop" to "regulated buyer can run this in production at scale." Other roadmap items include long-term archival to object storage, cryptographic per-tenant scoping (separate signing keys per tenant), and a SOC 2 Type II audit trail for the hosted offering.
 
 ## Where to look in code
 

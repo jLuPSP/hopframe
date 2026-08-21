@@ -1,6 +1,6 @@
 # Hopframe + Vertex AI Agent Engine
 
-Google's [Vertex AI Agent Engine](https://cloud.google.com/vertex-ai/generative-ai/docs/agent-engine) is a managed runtime for deploying LangChain, LangGraph, and custom agents to GCP. As of early-2026 it natively supports MCP tool calling, so most of what Hopframe inspects is already on the wire, you just need to point Agent Engine at the Hopframe sensor instead of directly at your MCP server.
+Google's [Vertex AI Agent Engine](https://cloud.google.com/vertex-ai/generative-ai/docs/agent-engine) is a managed runtime for deploying LangChain, LangGraph, and custom agents to GCP. As of early-2026, it natively supports MCP tool calling, so most of what Hopframe inspects is already on the wire. Point Agent Engine at the Hopframe sensor instead of directly at your MCP server.
 
 This page describes the two recommended deployment shapes.
 
@@ -25,7 +25,7 @@ flowchart LR
     S -- events --> CP
 ```
 
-The sensor is the existing `mcp-sensor` binary, deployed via the Helm chart at `deploy/helm/hopframe/`. No Agent Engine code changes required, only the tool configuration changes.
+The sensor is the existing `mcp-sensor` binary, deployed via the Helm chart at `deploy/helm/hopframe/`. Agent Engine requires no code changes. Only the tool configuration changes.
 
 ### Step by step
 
@@ -37,7 +37,7 @@ The sensor is the existing `mcp-sensor` binary, deployed via the Helm chart at `
      --set mcpSensor.upstream.url=http://your-mcp-server.upstream.svc:8080
    ```
 
-   The chart defaults `image.tag` to the chart's `appVersion`. Until v0.1 images are published to GHCR, build and push from this repo (`docker build -t your-registry/hopframe:dev .`) and override `image.repository` and `image.tag` to that.
+   The chart defaults `image.tag` to the chart's `appVersion`. Until v0.1 images are published to GHCR, build and push from this repo (`docker build -t your-registry/hopframe:dev .`). Override `image.repository` and `image.tag` to that.
 
 2. **Set up VPC peering** between Agent Engine's network and your VPC. See [VPC Service Controls for Vertex AI](https://cloud.google.com/vpc-service-controls/docs/supported-products#table_aiplatform).
 
@@ -66,7 +66,7 @@ The sensor is the existing `mcp-sensor` binary, deployed via the Helm chart at `
 
 5. **Deploy the agent** to Agent Engine as you normally would.
 
-That's it. Hopframe's existing detection pipeline, taint tracking, quarantine, and signed audit log all work without further changes.
+Hopframe's existing detection pipeline, taint tracking, quarantine, and signed audit log all work without further changes.
 
 ---
 
@@ -124,15 +124,15 @@ flowchart LR
 
 5. **Deploy and run.** Events from Python tool calls land on the Hopframe timeline, alongside any MCP traffic flowing through Shape 1.
 
-You can mix both shapes, MCP tools go through the sensor, Python tools emit via the SDK. As long as both share the same `agent_run_id`, the Hopframe UI shows them as a single forensic timeline.
+You can mix both shapes. MCP tools go through the sensor, and Python tools emit via the SDK. As long as both share the same `agent_run_id`, the Hopframe UI shows them as a single forensic timeline.
 
 ---
 
 ## A note on auth
 
-Agent Engine deployments authenticate to GCP services via service accounts. The Hopframe control plane authenticates separately via `HOPFRAME_API_TOKEN`. Treat the token as a secret, store it in Secret Manager, mount it as an env var, never commit it.
+Agent Engine deployments authenticate to GCP services via service accounts. The Hopframe control plane authenticates separately via `HOPFRAME_API_TOKEN`. Treat the token as a secret. Store it in Secret Manager, mount it as an env var, and never commit it.
 
-For sensor → control-plane mTLS (recommended for production), generate a per-sensor client cert, mount it into the sensor pod from Secret Manager, and configure the paths in the sensor YAML's `emitter.tls` block:
+For sensor → control-plane mTLS (recommended for production), generate a per-sensor client cert and mount it into the sensor pod from Secret Manager. Configure the paths in the sensor YAML's `emitter.tls` block:
 
 ```yaml
 emitter:
@@ -150,7 +150,7 @@ The control plane terminates TLS via the `--tls-cert` / `--tls-key` flags and en
 
 ## What you get
 
-Once either shape is wired up, every Vertex AI Agent Engine deployment using your Hopframe-equipped MCP servers (or the SDK) gives you:
+Once either shape is wired up, every Vertex AI Agent Engine deployment that uses your Hopframe-equipped MCP servers (or the SDK) provides:
 
 - Live UI showing agent activity in real time
 - Cross-protocol agent-run timelines (`/v1/agent-runs/{id}/timeline`)
@@ -158,8 +158,6 @@ Once either shape is wired up, every Vertex AI Agent Engine deployment using you
 - Cryptographically signed export bundles for compliance
 - Quarantine workflow for poisoned tool descriptions
 - Cross-protocol taint detection if your agents touch both MCP and A2A
-
-Same Hopframe, different runtime.
 
 ---
 
@@ -169,6 +167,6 @@ Same Hopframe, different runtime.
 
 **Agent Engine can't reach the sensor.** Verify VPC peering / Private Service Connect is configured and the sensor's `ClusterIP` resolves from Agent Engine's egress.
 
-**Events not appearing in the UI.** Check sensor stderr for emitter errors, most often `HOPFRAME_URL` is wrong or the bearer token doesn't match. Run `make validate VALIDATE_CMD=...` against the sensor to isolate.
+**Events not appearing in the UI.** Check sensor stderr for emitter errors. Most often, `HOPFRAME_URL` is wrong or the bearer token doesn't match. Run `make validate VALIDATE_CMD=...` against the sensor to isolate.
 
 **No `agent_run_id` showing up.** Make sure your Agent Engine code sets `X-Hopframe-Agent-Run-Id` (HTTP path) or passes `run_id` to `HopframeCallback` (SDK path). Without it, every request mints a fresh synthetic id and you lose correlation.

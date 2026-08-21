@@ -1,8 +1,8 @@
 # Policies
 
-A **rule** matches: "this regex hits this field." A **policy** disposes: "for tenant X on the github MCP server, when rule R fires, block in production but only warn in staging." Hopframe ships rules in YAML; policies live in the control plane and are managed through the API.
+A **rule** matches a regex against a field. A **policy** determines the response: "for tenant X on the github MCP server, when rule R fires, block in production but only warn in staging." Hopframe ships rules in YAML. Policies live in the control plane and are managed through the API.
 
-This page covers the policy resource model, the resolution rule, and the end-to-end authoring flow for an operator.
+This page covers the policy resource model, the resolution rule, and the operator authoring flow.
 
 ## Policy resource model
 
@@ -40,7 +40,7 @@ This page covers the policy resource model, the resolution rule, and the end-to-
 
 ## Resolution
 
-When a sensor evaluates a message:
+When a sensor evaluates a message, it follows these steps:
 
 1. Detection runs. Rules produce findings.
 2. The rule-default mode is computed (the strongest mode among the rules that produced findings).
@@ -49,7 +49,7 @@ When a sensor evaluates a message:
 5. Within the most-specific group, the strongest mode wins.
 6. If no policy matches, the rule-default mode applies.
 
-The resolver code is in `pkg/policy/policy.go::Resolve`. It is shared between sensor and control plane so both ends agree.
+The resolver code is in `pkg/policy/policy.go::Resolve`. The sensor and control plane share it so both ends agree.
 
 ## Authoring flow
 
@@ -78,11 +78,11 @@ curl -s -X POST \
       }' | jq
 ```
 
-The response includes the assigned `id` and `version`. The change is also written as a synthetic event on the audit chain so operators can trace who changed what.
+The response includes the assigned `id` and `version`. Hopframe also writes the change as a synthetic event on the audit chain. Operators can trace who changed what.
 
 ### 3. Preview the policy against recent traffic
 
-Before flipping a policy to `block`, replay it against the last hour of recorded events to see what it would have caught.
+Before changing a policy to `block`, replay it against the last hour of recorded events to see what it would have caught.
 
 ```bash
 curl -s -X POST \
@@ -92,7 +92,7 @@ curl -s -X POST \
   -d '{"limit": 1000}' | jq
 ```
 
-The output reports how many recorded events would have matched and what dispositions would have applied.
+The output reports the number of recorded events that would have matched and the dispositions that would have applied.
 
 ### 4. Update or disable
 
@@ -113,11 +113,11 @@ curl -s -H "Authorization: Bearer $HOPFRAME_API_TOKEN" \
   http://hopframe.acme.svc.cluster.local:7090/v1/sensors | jq '.sensors[] | {sensor_id, policy_version, policy_drift}'
 ```
 
-If `policy_drift` is `false` for every sensor, every sensor has applied the latest version. Drift surfaces stalled or disconnected sensors; investigate the heartbeat path.
+If `policy_drift` is `false` for every sensor, every sensor has applied the latest version. Drift identifies stalled or disconnected sensors. Investigate the heartbeat path.
 
 ## Hierarchy in practice
 
-A common operator pattern is:
+Operators commonly use this pattern:
 
 - One **org default** policy that blocks `critical` severity across all categories.
 - One **tenant** policy per tenant that warns on `high` for `prompt-injection`.
@@ -140,24 +140,24 @@ A common operator pattern is:
 ]
 ```
 
-A `high` prompt-injection finding on the github server in tenant acme resolves: org policy matches (severity ok), tenant policy matches, server pin matches. Server pin has the highest specificity, so its `block` wins. On the slack server in acme, only the tenant policy matches (`warn`).
+For a `high` prompt-injection finding on the github server in tenant acme, the org policy, tenant policy, and server pin all match. The server pin has the highest specificity, so its `block` wins. On the slack server in acme, only the tenant policy matches (`warn`).
 
 ## Sensor configuration
 
-Sensors fetch policy snapshots from the control plane on boot and on every heartbeat. Configure with:
+Sensors fetch policy snapshots from the control plane on boot and on every heartbeat. Use this configuration:
 
 ```bash
 HOPFRAME_CONTROL_PLANE_URL=http://hopframe.acme.svc.cluster.local:7090
 HOPFRAME_API_TOKEN=<sensor-bound-token>
 ```
 
-When `HOPFRAME_CONTROL_PLANE_URL` is set, the sensor:
+When `HOPFRAME_CONTROL_PLANE_URL` is set, the sensor takes these actions:
 
 - Issues `GET /v1/policies/active` at startup and applies the snapshot atomically.
 - Heartbeats every 30 seconds with its applied policy version.
 - On a version mismatch in the heartbeat ack, refetches and swaps in the new snapshot.
 
-The pipeline calls the resolver inline on every message, so a policy change that lands on the sensor takes effect on the next message without a restart.
+The pipeline calls the resolver inline on every message. A policy change that lands on the sensor takes effect on the next message without a restart.
 
 ## What policies do not do (today)
 
