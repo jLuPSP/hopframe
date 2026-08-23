@@ -14,10 +14,10 @@ Then the real ones below.
 
 | You control... | Path | Effect |
 | --- | --- | --- |
-| The MCP or A2A server | [Inline, on the wire](#inline-on-the-wire) | Hard-blocking, no agent code changes, full fidelity |
+| The MCP or A2A server | [Inline, in the data path](#inline-in-the-data-path) | Hard-blocking, no agent code changes, full fidelity |
 | The agent (managed runtime) | [SDK, inside your agent](#sdk-inside-your-agent) | Advisory, agent-side visibility, no rerouting |
 
-## Inline: on the wire
+## Inline: in the data path
 
 You control the endpoint. Run Hopframe in front of it. The agent and the server do not change; Hopframe inspects every JSON-RPC message between them and blocks the ones its policy says to block.
 
@@ -38,7 +38,7 @@ Repoint your agent at `http://127.0.0.1:7080/mcp` instead of your MCP's URL. Ope
 
 - `mcp-gateway` fronts several MCP upstreams at one address, sharing quarantine and taint state across routes.
 - `mcp-extauthz` attaches the same pipeline to an Envoy-style gateway (Envoy, Istio, Gloo, Emissary) as an external-authorization service. Request-side only.
-- `mcp-stdio-sensor` / `a2a-sensor` / the combined `sensor` cover stdio and A2A wires.
+- `mcp-stdio-sensor` / `a2a-sensor` / the combined `sensor` cover the stdio and A2A surfaces.
 
 ### Docker Compose shapes
 

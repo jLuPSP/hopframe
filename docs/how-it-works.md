@@ -1,12 +1,12 @@
 # How Hopframe works
 
-Hopframe is a security mesh for the protocol traffic agents actually emit. It sits on the MCP and A2A wires and inspects every JSON-RPC message before it lands: decide allow, warn, or block, then write the outcome to a tamper-evident audit log. It never reads the user prompt or the model's tokens. It only sees the messages between an agent and its tools.
+Hopframe is a security mesh for the protocol traffic agents actually emit. It sits in the MCP and A2A data path and inspects every JSON-RPC message before it lands: decide allow, warn, or block, then write the outcome to a tamper-evident audit log. It never reads the user prompt or the model's tokens. It only sees the messages between an agent and its tools.
 
 That is the whole model: **one engine, run where you control the traffic**. The same detection pipeline powers every surface, from a single inline sensor to an Envoy authorization service to an SDK inside your agent.
 
 ## Why the protocol wire
 
-Model-boundary guardrails watch the prompt going into an LLM and the response coming back. Agents have other wires that no prompt-layer filter ever sees:
+Model-boundary guardrails watch the prompt going into an LLM and the response coming back. Agents have other data-path messages that no prompt-layer filter ever sees:
 
 - The **tool description** (`tools/list`) an MCP server serves, which can carry instructions of its own.
 - The **tool result** that comes back, which can contain a leaked key or a forwarding directive.
@@ -118,7 +118,7 @@ All of that sits behind one HTTP API (`/v1/*`) that the UI and the CLI are thin 
 
 Same engine, two placements, detailed on the [Deploy page](index.md):
 
-- **Inline, on the wire.** `mcp-sensor` / `a2a-sensor` in front of the server you control. The agent and server do not change; you get hard-blocking and full response-side fidelity. `mcp-gateway` fronts several MCP upstreams at one address; `mcp-extauthz` bolts the same pipeline onto an Envoy-style gateway (request-side only, for gateways you already run).
+- **Inline, in the data path.** `mcp-sensor` / `a2a-sensor` in front of the server you control. The agent and server do not change; you get hard-blocking and full response-side fidelity. `mcp-gateway` fronts several MCP upstreams at one address; `mcp-extauthz` bolts the same pipeline onto an Envoy-style gateway (request-side only, for gateways you already run).
 - **SDK, inside your agent.** Hooks your agent's tool calls (LangChain, LangGraph, CrewAI, OpenAI Assistants, Vercel AI SDK, Mastra) and emits events to the control plane. It observes and advises; no hard-block and no rerouting. Source-only today on PyPI and npm.
 
 ## Empirically grounded
@@ -133,7 +133,7 @@ Same engine, two placements, detailed on the [Deploy page](index.md):
 
 Hopframe is one layer in an agent's defense, sized to make sense next to the rest:
 
-- **Model-boundary guardrails are a complement, not a replacement.** Hopframe does not read prompts or responses; Bedrock Guardrails, Model Armor, Lakera, and NeMo sit on the prompt/response channel. They stack: run the model-boundary guardrail for the prompt surface and Hopframe for the protocol wire. A layered-deploy guide is on the roadmap.
+- **Model-boundary guardrails are a complement, not a replacement.** Hopframe does not read prompts or responses; Bedrock Guardrails, Model Armor, Lakera, and NeMo sit on the prompt/response channel. They stack: run the model-boundary guardrail for the prompt surface and Hopframe for the data path. A layered-deploy guide is on the roadmap.
 - **Taint is byte-level today, semantic next.** The shipped taint does near-duplicate lineage (shingle hashes) between protocols, which a full paraphrase evades. Semantic, embedding-based lineage is the next hardening on the roadmap.
 - **Growing the corpus is the active work.** The shipped corpus is 95 cases; real traffic will surface rules not yet written. The roadmap treats the benchmark corpus as a living floor: each release extends it, so precision/recall and latency budgets hold as coverage grows.
 

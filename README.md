@@ -19,9 +19,9 @@
 
 # Hopframe
 
-**A security mesh for agent traffic.** Hopframe sits inline on MCP and A2A protocol wires. It catches the attacks model-boundary guardrails can't see. It writes a hash-chained, signed audit record that an auditor can verify offline.
+**A security mesh for agent traffic.** Hopframe sits inline in the MCP and A2A data path. It catches the attacks model-boundary guardrails can't see. It writes a hash-chained, signed audit record that an auditor can verify offline.
 
-Agents that call MCP servers or talk to other agents use protocol traffic that model-boundary guardrails do not inspect. A poisoned `tools/list` description can reach the model, a tool result can carry a leaked key, and an A2A peer can change mid-task. **Hopframe sits on those MCP and A2A wires so it can inspect them before forwarding.**
+Agents that call MCP servers or talk to other agents use protocol traffic that model-boundary guardrails do not inspect. A poisoned `tools/list` description can reach the model, a tool result can carry a leaked key, and an A2A peer can change mid-task. **Hopframe sits in that MCP and A2A data path so it can inspect each message before forwarding it.**
 
 ```mermaid
 flowchart LR
@@ -40,9 +40,9 @@ flowchart LR
   <em>30 seconds. <code>make demo</code> boots the full stack and plays the attack story end-to-end.</em>
 </p>
 
-## What it does at the wire
+## What it does in the data path
 
-- **Poisoned tool descriptions get blocked at the wire**, before the agent's model reads them. The sensor inspects every `tools/list` response and quarantines tools carrying instruction-override patterns.
+- **Poisoned tool descriptions get blocked in the data path**, before the agent's model reads them. The sensor inspects every `tools/list` response and quarantines tools carrying instruction-override patterns.
 - **Cross-protocol leaks get caught.** An MCP tool returns sensitive data; the agent forwards it in an A2A task to an unallowlisted peer. Hopframe blocks the leak. No model-layer filter sees this; it spans two protocol hops.
 - **Every event becomes evidence.** The log uses SHA-256 hash chains, optional Ed25519 per-record signatures, and optional Sigstore Rekor anchoring. A regulator can re-walk the chain in a six-month report. Selective disclosure sends one record to an auditor without revealing the rest.
 - **Editable policies, hot-reloaded.** "Block tool poisoning on the github MCP for tenant acme; warn on prompt injection elsewhere." Author policies in the UI or with `POST /v1/policies` and dry-run them against the last 1000 events. Sensors apply them on the next heartbeat with no restart.
@@ -103,7 +103,7 @@ For Kubernetes, the [Helm chart](deploy/helm/hopframe/) covers production deploy
 
 ## Why this exists
 
-Every AI security tool sits at the model boundary, inspecting the prompt going into the LLM and the response coming back. Agents have other wires: the MCP tool description served by a server, the tool result that comes back, and the A2A task envelope between agents. These are protocol messages rather than prompts, so no model-layer filter sees them.
+Every AI security tool sits at the model boundary, inspecting the prompt going into the LLM and the response coming back. Agents have other data-path traffic: the MCP tool description served by a server, the tool result that comes back, and the A2A task envelope between agents. These are protocol messages rather than prompts, so no model-layer filter sees them.
 
 The build decisions and a read of the landscape are in a case study: [Building Hopframe](https://jlu.dev/blog/building-hopframe/).
 

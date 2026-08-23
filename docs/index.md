@@ -2,7 +2,7 @@
 
 ![Hopframe](screenshots/hopframe-banner.svg){ .hero-img loading=lazy }
 
-Hopframe is a **security mesh for agent traffic**. It sits inline on the MCP and A2A protocol wires, inspects every JSON-RPC message before it lands, and writes every decision to a tamper-evident, cryptographically signed audit chain.
+Hopframe is a **security mesh for agent traffic**. It sits inline in the MCP and A2A data path, inspecting every JSON-RPC message before it lands, and writes every decision to a tamper-evident, cryptographically signed audit chain.
 
 <div class="hero-cta" markdown>
 
@@ -30,7 +30,7 @@ It catches the attacks model-boundary guardrails never see: poisoned tool descri
 
 What do you control?
 
-- **You control the MCP or A2A server.** Run Hopframe inline in front of it. No agent code changes. [Deploy inline](deploy.md#inline-on-the-wire)
+- **You control the MCP or A2A server.** Run Hopframe inline in front of it. No agent code changes. [Deploy inline](deploy.md#inline-in-the-data-path)
 - **The runtime is managed, but you own the agent code.** Use the SDK inside your agent. [Deploy SDK](deploy.md#sdk-inside-your-agent)
 - **Just poke at it.** `make demo` runs a cinematic story with bundled stubs, no setup. [Try it](deploy.md#quick-start)
 
@@ -40,7 +40,7 @@ Both paths converge on the same control plane and the same audit log.
 
 Hopframe is one layer in an agent's defense, positioned to stack with the others:
 
-- **Complements model-boundary guardrails.** It watches the protocol wires those tools never see (tool descriptions, tool results, A2A envelopes, cross-protocol). Pair a prompt/response guardrail with it for that surface.
+- **Complements model-boundary guardrails.** It watches the data-path messages those tools never see (tool descriptions, tool results, A2A envelopes, cross-protocol). Pair a prompt/response guardrail with it for that surface.
 - **Fits alongside an MCP/agent gateway.** Admission and routing, plus protocol-wire inspection, cover different ground than a perimeter.
 - **Ships the evidence.** The tamper-evident audit chain is the piece a model-boundary tool or a plain gateway does not produce.
 
