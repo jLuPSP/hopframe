@@ -91,25 +91,6 @@ plugins:
 
 nav:
   - Home: index.md
-  - Quickstart: quickstart.md
-  - Install:
-    - Where it runs: surface-matrix.md
-    - Deploy: install.md
-    - Vertex AI Agent Engine: agent-engine.md
-  - Concepts:
-    - What it catches: capabilities.md
-    - Compared to: compare.md
-    - Policies: policies.md
-    - Threat model: threat-model.md
-    - Value lineage (taint): taint.md
-    - Architecture: architecture.md
-  - Reference:
-    - CLI: cli.md
-    - HTTP API: api.md
-  - Operate:
-    - Operations: operations.md
-    - Developer guide: developer.md
-  - Roadmap: roadmap.md
 
 extra:
   generator: false

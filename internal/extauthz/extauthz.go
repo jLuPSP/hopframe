@@ -27,7 +27,7 @@
 //   - SSE chunk rewriting.
 //
 // Those require ext_proc (which can see and mutate responses) or the native
-// inline sensor. See docs/surface-matrix.md for the full per-surface map.
+// inline sensor. See docs/index.md for the deploy paths.
 package extauthz
 
 import (

@@ -12,12 +12,7 @@
 
 <p align="center">
   <a href="https://jlupsp.github.io/hopframe/">Docs</a> &middot;
-  <a href="docs/quickstart.md">Quickstart</a> &middot;
-  <a href="docs/install.md">Install</a> &middot;
-  <a href="docs/surface-matrix.md">Where it runs</a> &middot;
-  <a href="docs/cli.md">CLI</a> &middot;
-  <a href="docs/compare.md">Compare</a> &middot;
-  <a href="docs/architecture.md">Architecture</a> &middot;
+  <a href="docs/index.md">Deploy two ways</a> &middot;
   <a href="https://github.com/jLuPSP/hopframe/issues/new">Report a bug</a>
 </p>
 
@@ -100,10 +95,10 @@ After either, repoint your agent at `http://127.0.0.1:7080/mcp` instead of your 
 **Modifiers** (work with both `make run` and `docker compose up`):
 
 - `A2A_UPSTREAM=http://your-a2a-peer:8080` wires an A2A sensor on `:7081` (Docker: `docker compose --profile a2a up`).
-- `SECURE=1` (make only, today) enables bearer auth, role tokens (viewer/editor/admin/owner), tenant scoping, signing, and seeded sample policies. Tokens print on stdout. OIDC and Rekor stay off (external infra; see [`docs/install.md`](docs/install.md)).
+- `SECURE=1` (make only, today) enables bearer auth, role tokens (viewer/editor/admin/owner), tenant scoping, signing, and seeded sample policies. Tokens print on stdout. OIDC and Rekor stay off (external infra; see [deploy docs](docs/index.md)).
 - Drop `UPSTREAM` from the make path to use a bundled stub MCP and poke at the UI with no setup.
 
-For Kubernetes, the [Helm chart](deploy/helm/hopframe/) covers production deployments. Every release tag publishes pre-built binaries, multi-arch container images on `ghcr.io/jlupsp/hopframe`, and Sigstore-signed checksums. See [Releases](https://github.com/jLuPSP/hopframe/releases). The full references are [`docs/install.md`](docs/install.md), [CLI](docs/cli.md), and [HTTP API](docs/api.md).
+For Kubernetes, the [Helm chart](deploy/helm/hopframe/) covers production deployments. Every release tag publishes pre-built binaries, multi-arch container images on `ghcr.io/jlupsp/hopframe`, and Sigstore-signed checksums. See [Releases](https://github.com/jLuPSP/hopframe/releases) and the [deploy docs](docs/index.md).
 
 ## Why this exists
 
@@ -113,7 +108,7 @@ The build decisions and a read of the landscape are in a case study: [Building H
 
 ## Where it sits in the landscape
 
-The cited research is in [docs/landscape-research.md](docs/landscape-research.md) and the full matrix in [docs/compare.md](docs/compare.md). The short version, as of mid-2026, follows.
+The short version of the landscape, as of mid-2026, follows.
 
 The agent-security space sorts into four layers: model-boundary guardrails on the prompt/response channel (Bedrock Guardrails, Model Armor, Lakera, NeMo), MCP/agent gateways doing admission and routing, inline protocol-wire inspection, and audit/provenance. Hopframe combines the last two, which differentiates it. Model-boundary tools work at a different layer; stack them with Hopframe.
 
@@ -132,14 +127,12 @@ The agent-security space sorts into four layers: model-boundary guardrails on th
 
 Four-layer detection runs through regex packs (sub-5µs) → heuristic feature-density classifier (sub-30µs) → optional LLM judge for the uncertain band (300-1500ms) → behavioral anomaly detection on the control plane (continuous). Hopframe NFKC-normalizes and base64-decodes inputs before matching, so the obvious bypasses fail.
 
-Full capability list: [docs/capabilities.md](docs/capabilities.md).
-
 ## Status
 
 Alpha.
 
 - 22 Go packages tested under `-race`, 15 Python tests, 14 TypeScript tests, green on every commit.
-- Single-process control plane today. Postgres-backed HA is sketched in [`docs/roadmap.md`](docs/roadmap.md).
+- Single-process control plane today. Postgres-backed HA is not built yet.
 - The detection corpus is small (84 samples, F1 = 1.0; the perfect score reflects the corpus size). Treat it as a floor; real traffic will surface rules I have not written.
 - Hopframe fits evaluation, a homelab, a small team, or anywhere you want evidence on agent traffic before you trust it. Validate it yourself before a regulated workload.
 

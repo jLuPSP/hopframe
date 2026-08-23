@@ -15,8 +15,8 @@
 // stripped before forwarding so the upstream sees a clean path; the route's
 // proxy re-joins it onto the upstream base path.
 //
-// This is the full-fidelity surface in the per-surface matrix
-// (docs/surface-matrix.md): unlike the ext_authz attach, Hopframe owns the
+// This is the full-fidelity surface in the deploy docs
+// (docs/index.md): unlike the ext_authz attach, Hopframe owns the
 // data path here, so there is no response-side blind spot.
 package gateway
 

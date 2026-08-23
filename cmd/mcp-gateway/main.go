@@ -6,7 +6,7 @@
 // side only), this surface owns the data path, so it keeps full fidelity:
 // response-side detection, tools/list quarantine population, cross-protocol
 // taint tagging, and SSE rewriting all run, and quarantine + taint state is
-// shared across every route. See docs/surface-matrix.md.
+// shared across every route. See docs/index.md.
 //
 // Routes are supplied as a JSON array in HOPFRAME_GATEWAY_ROUTES, e.g.
 //

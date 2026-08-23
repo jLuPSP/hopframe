@@ -29,7 +29,7 @@ docker compose down -v --rmi local
 That last row is the surface's known limit: ext_authz inspects requests, not
 replies, so a poisoned response slips past it. The full gateway and inline
 sensor (`mcp-gateway`, `mcp-sensor`) close that gap. See
-[docs/surface-matrix.md](../../../docs/surface-matrix.md).
+[deploy docs](../../../docs/index.md).
 
 To watch it happen, flip the stub to its poisoned catalog
 (`command: ["--addr", ":8088", "--poisoned"]` on the `upstream` service) and
