@@ -27,5 +27,9 @@ sdk/typescript/package-lock.json
 # data dirs (live demo state)
 data/
 
+# local docs build + venv
+site/
+.venv/
+
 # Claude Code preview launcher (local dev only)
 .claude/launch.json

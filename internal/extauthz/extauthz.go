@@ -27,7 +27,7 @@
 //   - SSE chunk rewriting.
 //
 // Those require ext_proc (which can see and mutate responses) or the native
-// inline sensor. See docs/index.md for the deploy paths.
+// inline sensor. See docs/deploy.md for the deploy paths.
 package extauthz
 
 import (

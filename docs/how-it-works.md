@@ -65,7 +65,7 @@ When an MCP `tools/call` result comes back, Hopframe fingerpints every string va
 
 Fingerprinting is **shingling**: the value is hashed over a sliding 24-byte window with SHA-256, producing a set of fingerprints. Two values match when their shingle sets overlap, which is the standard near-duplicate test. It survives re-encoding and near-exact rewording, and it is fast enough to run on the forwarding hot path.
 
-The tracker is per-agent-run and bounded: 64 tagged values per run, 1024 runs in the live table, idle runs evicted by TTL and the oldest dropped first. A shared backend lets taints minted on one sensor be matched on another, closing the split-sensor and multi-replica gap. The wire moves fingerprints, with a short sample attached only for human-readable findings. Registration is asynchronous and best-effort; a missed push falls back to local-only matching, and a full paraphrase escapes this layer by design.
+The tracker is per-agent-run and bounded: 128 tagged values per run, 4096 runs in the live table, idle runs evicted by TTL and the oldest dropped first. A shared backend lets taints minted on one sensor be matched on another, closing the split-sensor and multi-replica gap. The wire moves fingerprints, with a short sample attached only for human-readable findings. Registration is asynchronous and best-effort; a missed push falls back to local-only matching, and a full paraphrase escapes this layer by design.
 
 ## One event, every surface
 

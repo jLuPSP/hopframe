@@ -11,7 +11,7 @@
 // with no per-gateway code. Its ceiling is request-side, response-dependent
 // features (tools/list quarantine population, cross-protocol taint tagging,
 // SSE rewrite) need ext_proc or the native inline sensor. See
-// docs/index.md.
+// docs/deploy.md.
 //
 // Config reuses the sensor config file (rules, emitter, policy, sensor id).
 // The upstream block is ignored, the gateway owns the upstream. Listen

@@ -90,8 +90,17 @@ plugins:
   - search
 
 nav:
+  - Overview: index.md
   - How it works: how-it-works.md
-  - Deploy: index.md
+  - Deploy: deploy.md
+  - Reference:
+      - CLI: cli.md
+      - HTTP API: api.md
+      - Configuration: configuration.md
+  - Operate:
+      - Operations: operations.md
+      - Security: security.md
+  - FAQ: faq.md
 
 extra:
   generator: false
