@@ -65,7 +65,7 @@ flowchart LR
   </tr>
   <tr>
     <td><a href="docs/screenshots/sensors.png"><img src="docs/screenshots/sensors.png" alt="Sensors UI"></a><br/><em><strong>Sensor fleet.</strong> Heartbeat, applied policy version, drift. <code>/sensors</code></em></td>
-    <td><a href="docs/screenshots/rules.png"><img src="docs/screenshots/rules.png" alt="Rules UI"></a><br/><em><strong>Rules.</strong> 59 detection rules across 5 categories, every regex inspectable. <code>/rules</code></em></td>
+    <td><a href="docs/screenshots/rules.png"><img src="docs/screenshots/rules.png" alt="Rules UI"></a><br/><em><strong>Rules.</strong> 58 detection rules across 6 categories, every regex inspectable. <code>/rules</code></em></td>
   </tr>
   <tr>
     <td colspan="2"><a href="docs/screenshots/audit.png"><img src="docs/screenshots/audit.png" alt="Audit UI"></a><br/><em><strong>Audit.</strong> Signed compliance exports with a chain-proof trailer. NDJSON / CSV. Verifiable offline by your auditor with no access to the control plane. <code>/audit</code></em></td>
@@ -134,7 +134,7 @@ Alpha.
 
 - 22 Go packages tested under `-race`, 15 Python tests, 14 TypeScript tests, green on every commit.
 - Single-process control plane today. Postgres-backed HA is not built yet.
-- The detection corpus is small (84 samples, F1 = 1.0; the perfect score reflects the corpus size). Treat it as a floor; real traffic will surface rules I have not written.
+- The detection corpus is small (95 samples, F1 = 1.0; the perfect score reflects the corpus size). Treat it as a floor; real traffic will surface rules I have not written.
 - Hopframe fits evaluation, a homelab, a small team, or anywhere you want evidence on agent traffic before you trust it. Validate it yourself before a regulated workload.
 
 If you run it somewhere real, I would like to know what broke.

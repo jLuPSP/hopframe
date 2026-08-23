@@ -4,9 +4,9 @@ Hopframe is a security mesh for the protocol traffic agents actually emit. It si
 
 That is the whole model: **one engine, run where you control the traffic**. The same detection pipeline powers every surface, from a single inline sensor to an Envoy authorization service to an SDK inside your agent.
 
-## Why the protocol wire
+## Why the data path
 
-Model-boundary guardrails watch the prompt going into an LLM and the response coming back. Agents have other data-path messages that no prompt-layer filter ever sees:
+Model-boundary guardrails watch the prompt going into an LLM and the response coming back. Agents have other data-path traffic that no prompt-layer filter ever sees:
 
 - The **tool description** (`tools/list`) an MCP server serves, which can carry instructions of its own.
 - The **tool result** that comes back, which can contain a leaked key or a forwarding directive.
@@ -59,13 +59,13 @@ Before any stage matches, Hopframe normalizes the input: NFKC Unicode normalizat
 
 ## The differentiator: cross-protocol taint
 
-Separate content filters on the MCP wire and the A2A wire cannot catch a value that is read over one and exfiltrated over the other. Hopframe can, because one process holds the shared state.
+Separate content filters on the MCP data path and the A2A data path cannot catch a value that is read over one and exfiltrated over the other. Hopframe can, because one process holds the shared state.
 
 When an MCP `tools/call` result comes back, Hopframe fingerpints every string value it inspects and files the fingerprints under that agent run. When the agent later emits an A2A task toward a peer, Hopframe compares the outgoing bytes against the tagged set for that run. A match is blocked on *provenance*, regardless of whether the bytes look like a credential.
 
 Fingerprinting is **shingling**: the value is hashed over a sliding 24-byte window with SHA-256, producing a set of fingerprints. Two values match when their shingle sets overlap, which is the standard near-duplicate test. It survives re-encoding and near-exact rewording, and it is fast enough to run on the forwarding hot path.
 
-The tracker is per-agent-run and bounded: 128 tagged values per run, 4096 runs in the live table, idle runs evicted by TTL and the oldest dropped first. A shared backend lets taints minted on one sensor be matched on another, closing the split-sensor and multi-replica gap. The wire moves fingerprints, with a short sample attached only for human-readable findings. Registration is asynchronous and best-effort; a missed push falls back to local-only matching, and a full paraphrase escapes this layer by design.
+The tracker is per-agent-run and bounded: 128 tagged values per run, 4096 runs in the live table, idle runs evicted by TTL and the oldest dropped first. A shared backend lets taints minted on one sensor be matched on another, closing the split-sensor and multi-replica gap. The mesh moves fingerprints, with a short sample attached only for human-readable findings. Registration is asynchronous and best-effort; a missed push falls back to local-only matching, and a full paraphrase escapes this layer by design.
 
 ## One event, every surface
 
@@ -99,7 +99,7 @@ Every decision is recorded in an append-only chain, so a record cannot be silent
 - **SHA-256 hash chain.** Each record's hash includes the previous head, so any edit breaks the chain visibly.
 - **Per-record Ed25519 signatures.** `GET /v1/records/{seq}` returns the canonical bytes, the signature, and a Merkle proof. The operator UI verifies the signature in-browser with the Web Crypto API; a single record can be handed to an auditor without revealing the rest (selective disclosure).
 - **Sigstore Rekor anchoring.** The chain head can be posted to a Rekor transparency log on demand; the anchor itself is written back into the chain, so the external witness becomes part of the trail.
-- **`hopframe-export`.** A standalone binary pulls a window of records, signs each, builds a Merkle root, and writes a manifest plus a `VERIFY.md`. The receiver verifies the bundle offline, with no access to the control plane. That is the shape a compliance auditor can follow.
+- **`hopframe-export`.** A standalone binary pulls a window of records, signs each, builds a Merkle root, and writes a manifest plus a `VERIFY.md` the receiver verifies offline, with no access to the control plane. See [Operations](operations.md#the-hopframe-export-bundle) for usage.
 
 Every rule also hashes its own authority, and the OTA content manifest serves each rule pack under a SHA-256 header that sensors verify on heartbeat, so the detection logic is as attestable as the log.
 
@@ -116,10 +116,10 @@ All of that sits behind one HTTP API (`/v1/*`) that the UI and the CLI are thin 
 
 ## Where you run it
 
-Same engine, two placements, detailed on the [Deploy page](index.md):
+Same engine, two placements, detailed on the [Deploy page](deploy.md):
 
 - **Inline, in the data path.** `mcp-sensor` / `a2a-sensor` in front of the server you control. The agent and server do not change; you get hard-blocking and full response-side fidelity. `mcp-gateway` fronts several MCP upstreams at one address; `mcp-extauthz` bolts the same pipeline onto an Envoy-style gateway (request-side only, for gateways you already run).
-- **SDK, inside your agent.** Hooks your agent's tool calls (LangChain, LangGraph, CrewAI, OpenAI Assistants, Vercel AI SDK, Mastra) and emits events to the control plane. It observes and advises; no hard-block and no rerouting. Source-only today on PyPI and npm.
+- **SDK, inside your agent.** Hooks your agent's tool calls (LangChain, LangGraph, CrewAI, OpenAI Assistants, Vercel AI SDK, Mastra) and emits events to the control plane. It observes and advises; no hard-block and no rerouting. Source-only today, installed from the repo (not on PyPI or npm).
 
 ## Empirically grounded
 
@@ -133,7 +133,7 @@ Same engine, two placements, detailed on the [Deploy page](index.md):
 
 Hopframe is one layer in an agent's defense, sized to make sense next to the rest:
 
-- **Model-boundary guardrails are a complement, not a replacement.** Hopframe does not read prompts or responses; Bedrock Guardrails, Model Armor, Lakera, and NeMo sit on the prompt/response channel. They stack: run the model-boundary guardrail for the prompt surface and Hopframe for the data path. A layered-deploy guide is on the roadmap.
+- **Model-boundary guardrails and Hopframe are complements.** Hopframe does not read prompts or responses; Bedrock Guardrails, Model Armor, Lakera, and NeMo sit on the prompt/response channel. They stack: run the model-boundary guardrail for the prompt surface and Hopframe for the data path. A layered-deploy guide is on the roadmap.
 - **Taint is byte-level today, semantic next.** The shipped taint does near-duplicate lineage (shingle hashes) between protocols, which a full paraphrase evades. Semantic, embedding-based lineage is the next hardening on the roadmap.
 - **Growing the corpus is the active work.** The shipped corpus is 95 cases; real traffic will surface rules not yet written. The roadmap treats the benchmark corpus as a living floor: each release extends it, so precision/recall and latency budgets hold as coverage grows.
 

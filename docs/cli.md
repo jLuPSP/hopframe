@@ -25,7 +25,14 @@ make build    # builds every binary into ./bin
 ````bash
 hopframe stats      # chain head, seq, path
 hopframe verify     # re-walk the chain, report integrity
-hopframe export     # pull a window of records, sign, write manifest + VERIFY.md
+````
+
+For a verifiable offline bundle, use the dedicated `hopframe-export` binary (the `hopframe export` subcommand is a stub that points you to it):
+
+````bash
+hopframe-export --out audit-bundle            # pull a window, sign, write manifest + VERIFY.md
+hopframe-export --since 2026-04-01T00:00:00Z \
+  --tenant tenant-a --sign-key <seed> --out audit
 ````
 
 ### Events
@@ -53,7 +60,7 @@ Policy mutations are written to the audit chain, so who changed which policy and
 
 ````bash
 hopframe sensors list                            # fleet inventory
-hopframe rules list [--category prompt-injection]   # browse the loaded rule packs
+hopframe rules list                               # browse the loaded rule packs
 
 hopframe tokens mint --name X --role Y [--tenant Z]
 hopframe tokens list
@@ -77,7 +84,7 @@ export HOPFRAME_API_TOKEN=$(openssl rand -hex 32)
 hopframe verify
 hopframe events list --action block --severity critical
 hopframe policies preview prod-strict
-hopframe export --output audit-bundle
+hopframe-export --out audit-bundle
 ````
 
 ## Building it yourself

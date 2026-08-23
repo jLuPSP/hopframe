@@ -2,6 +2,8 @@
 
 ![Hopframe](screenshots/hopframe-banner.svg){ .hero-img loading=lazy }
 
+<h1 class="visually-hidden">Hopframe</h1>
+
 Hopframe is a **security mesh for agent traffic**. It sits inline in the MCP and A2A data path, inspecting every JSON-RPC message before it lands, and writes every decision to a tamper-evident, cryptographically signed audit chain.
 
 <div class="hero-cta" markdown>
@@ -9,6 +11,12 @@ Hopframe is a **security mesh for agent traffic**. It sits inline in the MCP and
 [How it works](how-it-works.md){ .md-button .md-button--primary }
 [Deploy](deploy.md){ .md-button }
 [Quick start](deploy.md#quick-start){ .md-button }
+
+</div>
+
+<div class="hero-status" markdown>
+
+> **Status: alpha** under active use. The core pipeline, audit chain, control plane, and CLI are implemented and tested; validate against your real traffic before a regulated workload. See the [roadmap](operations.md#roadmap) for what is next.
 
 </div>
 
@@ -20,10 +28,11 @@ Hopframe is a **security mesh for agent traffic**. It sits inline in the MCP and
 
 It catches the attacks model-boundary guardrails never see: poisoned tool descriptions, prompt injection in tool arguments and results, credential and PII exfiltration in tool results, cross-protocol data taint, and A2A task drift.
 
-- **Inline or SDK, one engine.** Deploy the same detection pipeline in front of the server you control, or inside the agent itself. [How it works](how-it-works.md)
-- **A tamper-evident audit log.** SHA-256 hash chain, per-record Ed25519 signatures, Merkle proofs, optional Sigstore Rekor anchoring, and offline verification via the `hopframe-export` CLI. [How it works](how-it-works.md#the-audit-chain-and-the-evidence)
+- **Cross-protocol data taint.** A value read over MCP that leaves over A2A is blocked on provenance, not on how it looks. [How it works](how-it-works.md#the-differentiator-cross-protocol-taint)
+- **A tamper-evident audit chain.** SHA-256 hash chain, per-record Ed25519 signatures, Merkle proofs, optional Sigstore Rekor anchoring, and offline verification via a `hopframe-export` bundle. [How it works](how-it-works.md#the-audit-chain-and-the-evidence)
 - **A control plane you operate.** One HTTP API and CLI for events, policies, sensors, rules, tokens, and users, with multi-tenancy, RBAC, and optional OIDC SSO. [Operations](operations.md) and [Security](security.md)
-- **A real detection catalog.** 58 rules across 6 categories, Apache-2.0 licensed, inspectable under `content/`. [How it works](how-it-works.md#what-it-catches)
+- **A shipped detection catalog.** 58 rules across 6 categories, Apache-2.0 licensed, inspectable under `content/`. [How it works](how-it-works.md#what-it-catches)
+- **Inline or SDK, one engine.** Deploy the same pipeline in front of the server you control, or inside the agent itself. [How it works](how-it-works.md)
 - **Production shapes built in.** Postgres audit backend, TLS with mutual TLS, retention rotation, SIEM export, Prometheus metrics, and a Helm chart. [Operations](operations.md)
 
 ### Get started
@@ -34,7 +43,7 @@ What do you control?
 - **The runtime is managed, but you own the agent code.** Use the SDK inside your agent. [Deploy SDK](deploy.md#sdk-inside-your-agent)
 - **Just poke at it.** `make demo` runs a cinematic story with bundled stubs, no setup. [Try it](deploy.md#quick-start)
 
-Both paths converge on the same control plane and the same audit log.
+Both paths converge on the same control plane and the same audit chain.
 
 ### Where it sits
 
@@ -45,12 +54,6 @@ Hopframe is one layer in an agent's defense, positioned to stack with the others
 - **Ships the evidence.** The tamper-evident audit chain is the piece a model-boundary tool or a plain gateway does not produce.
 
 See the [roadmap](operations.md#roadmap) and [how it works](how-it-works.md#where-it-sits-and-what-is-next) for what is coming next.
-
-</div>
-
-<div class="hopframe-status" markdown>
-
-> **Status: alpha** under active use. The core pipeline, audit chain, control plane, and CLI are implemented and tested; validate against your real traffic before a regulated workload. See the [roadmap](operations.md#roadmap) for what is next.
 
 </div>
 

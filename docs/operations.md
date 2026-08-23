@@ -1,6 +1,6 @@
 # Operations
 
-How to run Hopframe in front of real traffic: storage, retention, observability, exporters, high availability, and honest notes on what is built.
+How to run Hopframe in front of real traffic: storage, retention, observability, exporters, high availability, and the [roadmap](#roadmap).
 
 ## Storage and the audit chain
 
@@ -24,15 +24,16 @@ How to run Hopframe in front of real traffic: storage, retention, observability,
 | Generic webhook | `HOPFRAME_WEBHOOK_URL` + `HOPFRAME_WEBHOOK_SECRET` + optional `HOPFRAME_WEBHOOK_MIN_SEVERITY`. |
 | Splunk HEC | `HOPFRAME_SPLUNK_URL`. |
 
-Exporters are best-effort: errors log to the hub drop counter and a slow exporter does not stall ingest.
+Exporters are best-effort: errors log to the control-plane drop counter and a slow exporter does not stall ingest.
 
 ## The hopframe-export bundle
 
 ````bash
-hopframe export --output audit-bundle
+hopframe-export --out audit-bundle --since 2026-04-01T00:00:00Z
+hopframe-export --help   # --out, --sign-key, --since/--until, --tenant, --limit
 ````
 
-Pulls a window of records, signs each with the operator key, builds a Merkle root, and writes a manifest plus a `VERIFY.md`. The receiver verifies offline without contacting the control plane. This is the shape a compliance auditor can follow.
+Pulls a window of records, signs each with the operator key, builds a Merkle root, and writes a manifest plus a `VERIFY.md`. The receiver verifies offline without contacting the control plane. See [How it works](how-it-works.md#the-audit-chain-and-the-evidence) for what the bundle proves.
 
 ## High availability
 

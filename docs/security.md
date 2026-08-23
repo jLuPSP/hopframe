@@ -47,7 +47,7 @@ Persist the signing seed (`HOPFRAME_SIGNING_KEY`, 64 hex chars) for any deployme
 
 - API token secret values are shown once at mint; only the SHA-256 persists. Revoke via `hopframe tokens revoke <id>` or `DELETE /v1/tokens/{id}`.
 - OIDC client secret and webhook secrets are read from environment or Helm values.
-- Rate limiting on `/v1/*` writes protects against abuse; exports are best-effort and never stall ingest on a slow downstream.
+- Rate limiting on `/v1/*` (reads and writes) protects against abuse; exports are best-effort and never stall ingest on a slow downstream.
 
 ## Detection content and OTA
 

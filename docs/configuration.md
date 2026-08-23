@@ -19,16 +19,17 @@ Hopframe is configured three ways, all surfacing the same knobs: environment var
 | `HOPFRAME_POLICY_PATH` | (unset) | Path to persist policies. |
 | `HOPFRAME_SENSOR_FLEET` | (unset) | Enable the sensor fleet inventory. |
 | `HOPFRAME_CONTENT_ROOT` | (unset) | Root of OTA detection-content packs. |
-| `HOPFRAME_RATE_LIMIT_RPS` | (unset) | Per-IP rate limit on `/v1/*` writes. `0` disables. |
+| `HOPFRAME_RATE_LIMIT_RPS` | (unset) | Per-IP rate limit on every `/v1/*` request, reads and writes. `0` disables. |
 | `HOPFRAME_USERS_PATH` | (unset) | JSON file of hashed users. |
 | `HOPFRAME_BOOTSTRAP_ADMIN` | (unset) | `username:password` seeded on first start. |
-| `HOPFRAME_LLM_JUDGE_URL` | (unset) | Layer-3 LLM judge endpoint (OpenAI Chat Completions wire format). |
-| `HOPFRAME_LLM_JUDGE_API_KEY` | (unset) | Judge API key. |
-| `HOPFRAME_LLM_JUDGE_MODEL` | (unset) | Judge model. |
 | `HOPFRAME_WEBHOOK_URL` | (unset) | SIEM webhook URL. |
 | `HOPFRAME_WEBHOOK_SECRET` | (unset) | Webhook HMAC secret. |
 | `HOPFRAME_WEBHOOK_MIN_SEVERITY` | (unset) | Minimum severity to export. |
 | `HOPFRAME_SPLUNK_URL` | (unset) | Splunk HEC endpoint. |
+| `HOPFRAME_SPLUNK_TOKEN` | (unset) | Splunk HEC token. |
+| `HOPFRAME_SPLUNK_INDEX` | (unset) | Splunk HEC index. |
+| `HOPFRAME_SPLUNK_MIN_SEVERITY` | (unset) | Minimum severity to send to Splunk. |
+| `HOPFRAME_TOKENS_PATH` | (unset) | Path to the JSON file holding API tokens. |
 | `HOPFRAME_OIDC_ISSUER` | (unset) | OIDC issuer (all four OIDC flags must be set to enable). |
 | `HOPFRAME_OIDC_CLIENT_ID` | (unset) | OIDC client. |
 | `HOPFRAME_OIDC_CLIENT_SECRET` | (unset) | OIDC secret. |
@@ -50,7 +51,7 @@ upstream:
   url: http://upstream-mcp:8080
   timeout: 30s
 listen:
-  address: "",0:7080
+  address: ":7080"
   base_path: /mcp
 
 rules:
@@ -67,7 +68,7 @@ policy:
   block_task_drift: false    # detect-only by default, opt in per deployment
 ````
 
-Sensor env overrides include `HOPFRAME_MCP_LISTEN_ADDR`, `HOPFRAME_MCP_UPSTREAM_URL`, `HOPFRAME_A2A_LISTEN_ADDR`, `HOPFRAME_A2A_UPSTREAM_URL`, and `HOPFRAME_EMITTER_URL` (control-plane ingest end). The combined `sensor` runs MCP and A2A in one process so they share a taint tracker.
+Sensor env overrides include `HOPFRAME_MCP_LISTEN_ADDR`, `HOPFRAME_MCP_UPSTREAM_URL`, `HOPFRAME_A2A_LISTEN_ADDR`, `HOPFRAME_A2A_UPSTREAM_URL`, and `HOPFRAME_EMITTER_URL` (control-plane ingest end). The sensor also reads the optional layer-3 LLM judge config (`HOPFRAME_LLM_JUDGE_URL`, `HOPFRAME_LLM_JUDGE_API_KEY`, `HOPFRAME_LLM_JUDGE_MODEL`); the control plane does not. The combined `sensor` runs MCP and A2A in one process so they share a taint tracker.
 
 ## Kubernetes: Helm chart values
 
@@ -89,8 +90,9 @@ Key values (full set in `deploy/helm/hopframe/`):
 | `controlPlane.webhook.url/secret/minSeverity` | empty | SIEM webhook export. |
 | `controlPlane.oidc.*` | empty | OIDC SSO (all four values to enable). |
 | `mcpSensor.upstream.url` | (required) | The MCP server the sensor forwards to. |
-| `mcpSensor.replicas` | `1` | Sensor replicas. |
-| `mcpSensor.spool.size` | empty | Local templated spool. |
+| `mcpSensor.replicas` | `2` | Sensor replicas. |
+| `mcpSensor.spool.enabled` | `true` | Local templated spool. |
+| `mcpSensor.spool.size` | `1Gi` | Spool size when enabled. |
 
 Persist `signingKey` for any deployment that needs verifiable offline exports; an ephemeral key breaks verification of prior bundles after a restart.
 

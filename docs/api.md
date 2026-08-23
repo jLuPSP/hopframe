@@ -93,6 +93,6 @@ Token secret values are shown once at mint; only the SHA-256 persists.
 
 ## Rate limiting
 
-A per-IP token-bucket limiter applies to `/v1/*` writes when configured (`HOPFRAME_RATE_LIMIT_RPS`). Exceeded requests return `429` with `Retry-After: 1`. `/healthz`, `/metrics`, and the UI are unconstrained.
+A per-IP token-bucket limiter applies to every `/v1/*` request (reads and writes) when configured (`HOPFRAME_RATE_LIMIT_RPS`). Exceeded requests return `429` with `Retry-After: 1`. `/healthz`, `/metrics`, and the UI are unconstrained.
 
 The full endpoint list lives in [`control-plane/api/api.go`](https://github.com/jLuPSP/hopframe/blob/main/control-plane/api/api.go).
