@@ -13,15 +13,15 @@ theme:
   palette:
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
-      primary: blue grey
-      accent: light blue
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode
     - media: "(prefers-color-scheme: light)"
       scheme: default
-      primary: blue grey
-      accent: indigo
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-night
         name: Switch to dark mode
@@ -43,11 +43,16 @@ theme:
     - content.action.view
     - content.tooltips
     - toc.follow
+  custom_dir: overrides
   font:
     text: Inter
     code: JetBrains Mono
   icon:
     repo: fontawesome/brands/github
+    logo: hopframe
+
+extra_css:
+  - stylesheets/hopframe.css
 
 markdown_extensions:
   - abbr

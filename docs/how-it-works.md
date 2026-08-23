@@ -129,10 +129,12 @@ Same engine, two placements, detailed on the [Deploy page](index.md):
 - **Measured latency.** ~115k evals/sec on a laptop (p50 ~30µs, p99 ~160µs); the LLM judge adds its 300-1500ms only on the uncertain band.
 - Prebuilt binaries for linux / darwin / windows on amd64 / arm64, multi-arch container images, Syft SBOMs, and cosign-signed checksums per release.
 
-## What it deliberately is not
+## Where it sits, and what is next
 
-- A model-layer guardrail. It does not inspect prompts or model responses. Layer-1 regex heuristics on tool-result text are the only overlap; run both for their respective surfaces.
-- Semantic data-flow analysis. Taint is byte-level, near-duplicate lineage between two protocols, not meaning tracking; a full paraphrase escapes it.
-- A certified or magic detector. The corpus is small, so treat its results as a floor and validate against your real traffic. Hopframe is alpha and fits evaluation, a homelab, a small team, or wherever you want hard evidence on agent traffic before you trust it.
+Hopframe is one layer in an agent's defense, sized to make sense next to the rest:
+
+- **Model-boundary guardrails are a complement, not a replacement.** Hopframe does not read prompts or responses; Bedrock Guardrails, Model Armor, Lakera, and NeMo sit on the prompt/response channel. They stack: run the model-boundary guardrail for the prompt surface and Hopframe for the protocol wire. A layered-deploy guide is on the roadmap.
+- **Taint is byte-level today, semantic next.** The shipped taint does near-duplicate lineage (shingle hashes) between protocols, which a full paraphrase evades. Semantic, embedding-based lineage is the next hardening on the roadmap.
+- **Growing the corpus is the active work.** The shipped corpus is 95 cases; real traffic will surface rules not yet written. The roadmap treats the benchmark corpus as a living floor: each release extends it, so precision/recall and latency budgets hold as coverage grows.
 
 This page is the short story. The [Go source](https://github.com/jLuPSP/hopframe/tree/main) is the full one, and [building-hopframe](https://jlu.dev/blog/building-hopframe/) walks through the pipeline and the threat model in prose.

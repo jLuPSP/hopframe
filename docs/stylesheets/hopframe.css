@@ -1,0 +1,171 @@
+/* Hopframe brand theme - colors lifted from docs/screenshots/hopframe-mark.svg */
+
+/* ---- Ink & palette ---- */
+:root {
+  --hf-ink:    #f6f1ea;   /* primary text / frame */
+  --hf-copper: #b8732e;   /* the arc + accent */
+  --hf-coal:   #131211;   /* page background */
+  --hf-coal-2: #0e0d0c;   /* deeper panel */
+  --hf-coal-3: #1c1b19;   /* raised panel */
+  --hf-line:   #3a3732;   /* hairline borders */
+  --hf-muted:  #b8b1a3;   /* secondary text */
+  --hf-dim:    #5a554c;   /* tertiary / captions */
+}
+
+/* Dark (slate) scheme is the brand default. */
+[data-md-color-scheme="slate"] {
+  --md-default-bg-color:            var(--hf-coal);
+  --md-default-bg-color--light:     var(--hf-coal-2);
+  --md-default-bg-color--lighter:   var(--hf-coal-3);
+  --md-default-bg-color--lightest:  var(--hf-coal-3);
+  --md-default-fg-color:            var(--hf-ink);
+  --md-default-fg-color--light:     var(--hf-muted);
+  --md-default-fg-color--lighter:   var(--hf-dim);
+  --md-default-fg-color--lightest:  var(--hf-line);
+  --md-primary-fg-color:            var(--hf-copper);
+  --md-primary-fg-color--light:     var(--hf-copper);
+  --md-primary-fg-color--dark:      var(--hf-copper);
+  --md-primary-bg-color:            var(--hf-ink);
+  --md-accent-fg-color:             var(--hf-copper);
+  --md-typeset-a-color:             var(--hf-copper);
+  --md-typeset-a-color--hover:      #d08f4a;
+  --md-code-bg-color:               var(--hf-coal-2);
+  --md-code-fg-color:               var(--hf-ink);
+  --md-code-hl-color:               rgba(184,115,46,0.18);
+  --md-code-hl-keyword-color:       var(--hf-copper);
+  --md-code-hl-string-color:        #d4a76a;
+  --md-code-hl-number-color:        var(--hf-copper);
+  --md-typeset-mark-bg-color:       rgba(184,115,46,0.28);
+  --md-admonition-bg-color:         var(--hf-coal-3);
+  --md-footer-bg-color:             var(--hf-coal-2);
+  --md-header-bg-color:             rgba(19,18,17,0.9);
+  --md-primary-btn-color:           var(--hf-copper);
+}
+
+/* Light scheme, warmed to match. */
+[data-md-color-scheme="default"] {
+  --md-default-bg-color:            #faf5ec;
+  --md-default-bg-color--light:     #f3ecdd;
+  --md-default-bg-color--lighter:   #ece2cf;
+  --md-default-fg-color:            #131211;
+  --md-default-fg-color--light:     #5a554c;
+  --md-default-fg-color--lighter:   #8a8276;
+  --md-default-fg-color--lightest:  #b8b1a3;
+  --md-primary-fg-color:            #8a5a24;
+  --md-primary-fg-color--light:     #b8732e;
+  --md-primary-fg-color--dark:      #6e471d;
+  --md-primary-bg-color:            #131211;
+  --md-accent-fg-color:             #8a5a24;
+  --md-typeset-a-color:             #8a5a24;
+  --md-typeset-a-color--hover:      #b8732e;
+  --md-code-bg-color:               #f0e8d8;
+  --md-code-fg-color:               #2a2724;
+  --md-code-hl-color:               rgba(138,90,36,0.15);
+  --md-code-hl-keyword-color:       #8a5a24;
+  --md-code-hl-string-color:        #6e6a5f;
+  --md-code-hl-number-color:        #6e471d;
+  --md-typeset-mark-bg-color:       rgba(184,115,46,0.2);
+  --md-footer-bg-color:             #131211;
+}
+
+/* ---- Brand header ---- */
+.md-header {
+  background: linear-gradient(90deg, var(--hf-coal-2), var(--hf-coal));
+  box-shadow: 0 1px 0 var(--hf-line);
+}
+.md-header .md-header__title { color: var(--hf-ink); }
+.md-header .md-header__topic { color: var(--hf-copper); }
+
+/* ---- Brand footer ---- */
+.md-footer {
+  border-top: 1px solid var(--hf-line);
+  background: var(--hf-coal-2);
+  color: var(--hf-muted);
+}
+
+/* ---- Hero on the overview page ---- */
+.hopframe-hero {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: 1.6rem 0.5rem 0.4rem; gap: 0.6rem;
+}
+.hopframe-hero .hero-img { max-width: 860px; width: 100%; }
+.hopframe-hero .hero-tagline {
+  max-width: 60ch; margin: 0.2rem auto 0;
+  color: var(--hf-muted); font-size: 1.05rem;
+}
+.hopframe-hero .hero-cta {
+  display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center; margin-top: 0.4rem;
+}
+.hopframe-hero .hero-cta .md-button { margin: 0; }
+
+/* Overview hero title, if present: sit under the picture. */
+.hopframe-hero h1 {
+  font-size: 1.9rem; margin-top: 0.4rem;
+}
+/* ---- On-brand tables / admonitions ---- */
+.md-typeset table:not([class]) {
+  border: 1px solid var(--hf-line);
+  font-size: 0.82em;
+}
+.md-typeset table:not([class]) th { background: var(--hf-coal-3); color: var(--hf-ink); }
+.md-typeset table:not([class]) tr:nth-child(2n) { background: rgba(184,115,46,0.05); }
+
+.md-typeset .admonition { border-color: var(--hf-copper); }
+.md-typeset .admonition-title { background: rgba(184,115,46,0.14); }
+
+/* ---- Code ---- */
+.md-typeset code {
+  border: 1px solid var(--hf-line);
+  border-radius: 4px;
+  padding: 0 0.28em;
+}
+
+/* ---- Navigation ---- */
+.md-nav__item .md-nav__link--active { color: var(--hf-copper); }
+.md-tabs__link--active, .md-tabs__link:hover { color: var(--hf-copper) !important; }
+
+/* ---- TOC ---- */
+.md-sidebar__inner .md-nav__link--active { color: var(--hf-copper); }
+
+/* ---- Tabs (material) ---- */
+.md-typeset .tabbed-set > label { border-bottom-color: var(--hf-copper); }
+
+/* ---- Selection ---- */
+::selection { background: rgba(184,115,46,0.35); }
+
+/* ---- Scrollbar hint of brand ---- */
+@media (min-width: 1220px) {
+  ::-webkit-scrollbar-thumb { background: var(--hf-line); border-radius: 6px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--hf-copper); }
+}
+/* ---- Overview main panel ---- */
+.hopframe-main {
+  margin: 1.4rem 0 0.4rem;
+  padding: 0.6rem 1.1rem 0.9rem;
+  border: 1px solid var(--hf-line);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(184,115,46,0.05), rgba(0,0,0,0));
+}
+.hopframe-main h2, .hopframe-main h3 {
+  border-bottom: 1px solid var(--hf-line);
+  padding-bottom: 0.2rem;
+}
+
+/* ---- Status ---- */
+.hopframe-status {
+  margin: 0.8rem 0;
+}
+.hopframe-status .admonition, .hopframe-status blockquote {
+  border-left: 3px solid var(--hf-copper);
+  background: rgba(184,115,46,0.07);
+}
+
+/* ---- Hero image frame ---- */
+.hopframe-hero img.hero-img {
+  border: 1px solid var(--hf-line);
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+}
+
+/* Center the hero tagline & cta */
+.hopframe-hero p { max-width: 62ch; margin-left: auto; margin-right: auto; }

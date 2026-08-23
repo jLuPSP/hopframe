@@ -1,8 +1,24 @@
-# Hopframe
+<div class="hopframe-hero" markdown>
 
-> Status: **alpha** under active use. The core pipeline, audit chain, control plane, and CLI are implemented and tested; validate against your real traffic before a regulated workload. See the [What is not built](operations.md#what-is-not-built) notes for honest scope.
+![Hopframe](screenshots/hopframe-banner.svg){ .hero-img loading=lazy }
 
-Hopframe is a **security mesh for agent traffic**. It sits inline on the MCP and A2A protocol wires, inspects every JSON-RPC message before it lands, and writes every decision to a tamper-evident, cryptographically signed audit chain. It catches the attacks model-boundary guardrails never see: poisoned tool descriptions, prompt injection in tool arguments and results, credential and PII exfiltration in tool results, cross-protocol data taint, and A2A task drift.
+Hopframe is a **security mesh for agent traffic**. It sits inline on the MCP and A2A protocol wires, inspects every JSON-RPC message before it lands, and writes every decision to a tamper-evident, cryptographically signed audit chain.
+
+<div class="hero-cta" markdown>
+
+[How it works](how-it-works.md){ .md-button .md-button--primary }
+[Deploy](deploy.md){ .md-button }
+[Quick start](deploy.md#quick-start){ .md-button }
+
+</div>
+
+</div>
+
+<div class="hopframe-main" markdown>
+
+## What it is
+
+It catches the attacks model-boundary guardrails never see: poisoned tool descriptions, prompt injection in tool arguments and results, credential and PII exfiltration in tool results, cross-protocol data taint, and A2A task drift.
 
 - **Inline or SDK, one engine.** Deploy the same detection pipeline in front of the server you control, or inside the agent itself. [How it works](how-it-works.md)
 - **A tamper-evident audit log.** SHA-256 hash chain, per-record Ed25519 signatures, Merkle proofs, optional Sigstore Rekor anchoring, and offline verification via the `hopframe-export` CLI. [How it works](how-it-works.md#the-audit-chain-and-the-evidence)
@@ -10,7 +26,7 @@ Hopframe is a **security mesh for agent traffic**. It sits inline on the MCP and
 - **A real detection catalog.** 58 rules across 6 categories, Apache-2.0 licensed, inspectable under `content/`. [How it works](how-it-works.md#what-it-catches)
 - **Production shapes built in.** Postgres audit backend, TLS with mutual TLS, retention rotation, SIEM export, Prometheus metrics, and a Helm chart. [Operations](operations.md)
 
-## Get started
+### Get started
 
 What do you control?
 
@@ -20,9 +36,23 @@ What do you control?
 
 Both paths converge on the same control plane and the same audit log.
 
-## What Hopframe is not
+### Where it sits
 
-For the boundaries in plain terms: it is not a model-layer guardrail (it does not read prompts or model responses), and it is not semantic data-flow analysis (taint is byte-level, near-duplicate lineage between protocols, not meaning tracking). Pair a model-boundary guardrail with it for that surface.
+Hopframe is one layer in an agent's defense, positioned to stack with the others:
+
+- **Complements model-boundary guardrails.** It watches the protocol wires those tools never see (tool descriptions, tool results, A2A envelopes, cross-protocol). Pair a prompt/response guardrail with it for that surface.
+- **Fits alongside an MCP/agent gateway.** Admission and routing, plus protocol-wire inspection, cover different ground than a perimeter.
+- **Ships the evidence.** The tamper-evident audit chain is the piece a model-boundary tool or a plain gateway does not produce.
+
+See the [roadmap](operations.md#roadmap) and [how it works](how-it-works.md#where-it-sits-and-what-is-next) for what is coming next.
+
+</div>
+
+<div class="hopframe-status" markdown>
+
+> **Status: alpha** under active use. The core pipeline, audit chain, control plane, and CLI are implemented and tested; validate against your real traffic before a regulated workload. See the [roadmap](operations.md#roadmap) for what is next.
+
+</div>
 
 ## Docs map
 

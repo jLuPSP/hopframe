@@ -46,14 +46,18 @@ See the chart's [README](https://github.com/jLuPSP/hopframe/tree/main/deploy/hel
 
 `GET /healthz` is the liveness check. Wire it into your orchestrator. Prometheus `/metrics` gives readiness signals the webhook exporters do not.
 
-## What is not built
+## Roadmap
 
-- Multi-replica HA for the file-backed audit chain (use Postgres).
-- Automatic certificate rotation for TLS (terminate mTLS at your ingress/gateway today).
-- A SaaS control plane.
-- Profiling / tracing end-to-end beyond the per-message `latency_micros` field and Prometheus counters.
+What is next, in rough order of intent:
 
-These are honest boundaries, not growth promises. If one is blocking you, open an issue.
+- **Postgres-backed multi-replica HA.** The file-backed audit chain is single-writer by design; the Postgres backend is the path to multiple control-plane replicas. The `EventStore` interface is already split for it.
+- **Semantic taint.** Extend byte-level shingling with embedding-based lineage so a full paraphrase is caught, not just near-duplicate re-encoding.
+- **Automatic TLS certificate rotation.** Today you terminate mTLS at your ingress or gateway; native issuance and rotation is the next transport item.
+- **End-to-end tracing.** Beyond the per-message `latency_micros` field and Prometheus counters, add per-run trace spans across sensors and the control plane.
+- **A SaaS control plane.** Not on the near-term path; Hopframe is self-hosted and you keep the keys.
+- **A larger benchmark corpus.** The 95-case corpus is a floor; each release extends it as real traffic surfaces new rules.
+
+If one of these is blocking you, [open an issue](https://github.com/jLuPSP/hopframe/issues).
 
 ## Upgrades
 

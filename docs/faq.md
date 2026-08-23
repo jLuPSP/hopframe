@@ -28,7 +28,7 @@ Source-available under BSL 1.1, converting to Apache 2.0 three years after each 
 
 ## What traffic should I run it on first?
 
-Evaluation traffic, a homelab, or a small team. It is alpha: the detection corpus is small, so validate against your real traffic and treat the shipped rules as a floor. See [Operations](operations.md#what-is-not-built).
+Evaluation traffic, a homelab, or a small team. It is alpha: the detection corpus is small, so validate against your real traffic and treat the shipped rules as a floor. See [Operations](operations.md#roadmap).
 
 ## Where do my events go?
 
