@@ -66,7 +66,7 @@ hide:
     UPSTREAM=http://your-mcp-server:8080 docker compose up
     ```
 
-    You do not need to install Go. The multi-stage Dockerfile compiles inside the build. Use the same agent reroute as above.
+    The multi-stage Dockerfile compiles inside the build, so Go is not required. Use the same agent reroute as above.
 
 === "On Kubernetes"
 
@@ -76,7 +76,7 @@ hide:
       --set mcpSensor.upstream.url=http://your-mcp-server:8080
     ```
 
-    This uses the published `ghcr.io/jlupsp/hopframe:0.1.0` multi-arch image. See [Operations](operations.md) for the production-shape chart values.
+    This uses the `ghcr.io/jlupsp/hopframe:0.1.0` multi-arch image. See [Operations](operations.md) for the production-shape chart values.
 
 Open [http://127.0.0.1:7090](http://127.0.0.1:7090) for the operator UI.
 
@@ -86,22 +86,22 @@ Open [http://127.0.0.1:7090](http://127.0.0.1:7090) for the operator UI.
 
 <div class="hopframe-card" markdown>
 ### Tool poisoning blocked at the wire
-Hopframe inspects every `tools/list` response before the agent's model reads the tool descriptions. It quarantines tools with instruction-override patterns, invisible-Unicode smuggling, or confused-deputy framings. Subsequent `tools/call` requests to that tool short-circuit.
+Hopframe inspects every `tools/list` response before the agent's model reads it. It quarantines tools with instruction-override patterns, invisible-Unicode smuggling, or confused-deputy framings. Subsequent `tools/call` requests to that tool short-circuit.
 </div>
 
 <div class="hopframe-card" markdown>
 ### Cross-protocol leaks caught
-An MCP tool returns sensitive data. The agent forwards it in an A2A task to an unallowlisted peer. Hopframe blocks the leak. No model-layer filter sees this because it spans two protocol hops. No published competitor ships this.
+An MCP tool returns sensitive data. The agent forwards it in an A2A task to an unallowlisted peer. Hopframe blocks the leak. A model-layer filter does not see both protocol hops. In the [mid-2026 review](landscape-research.md), we did not verify this behavior in another surveyed tool.
 </div>
 
 <div class="hopframe-card" markdown>
-### Every event is evidence
-The audit uses a SHA-256 hash chain, optional Ed25519 per-record signatures, and optional Sigstore Rekor anchoring. An auditor can re-walk the chain offline in a six-month report. Selective disclosure lets one record go to an auditor without revealing the rest.
+### Every event is recorded
+The audit uses a SHA-256 hash chain, optional Ed25519 per-record signatures, and optional Sigstore Rekor anchoring. An auditor can re-walk the chain offline in a six-month report. Selective disclosure sends one record to an auditor without revealing the rest.
 </div>
 
 <div class="hopframe-card" markdown>
 ### Editable policies, hot-reloaded
-"Block tool poisoning on the github MCP for tenant acme; warn on prompt injection elsewhere." You can author policies in the UI or with `POST /v1/policies` and dry-run them against the last 1000 events. Sensors apply them on the next heartbeat with no restart.
+"Block tool poisoning on the github MCP for tenant acme; warn on prompt injection elsewhere." Author policies in the UI or with `POST /v1/policies` and dry-run them against the last 1000 events. Sensors apply them on the next heartbeat with no restart.
 </div>
 
 <div class="hopframe-card" markdown>
@@ -122,39 +122,39 @@ The default is file-backed NDJSON (zero dependencies). Optional Postgres is comp
 
 <div class="hopframe-card" markdown>
 ### I want to use it
-[**Quickstart**](quickstart.md) provides the 5-minute path. [**Where it runs**](surface-matrix.md) compares the SDK, ext_authz, gateway, and inline sensor surfaces. [**Install**](install.md) covers production deployments. [**Operations**](operations.md) covers backup, healthz, and capacity.
+[**Quickstart**](quickstart.md) is the 5-minute path. [**Where it runs**](surface-matrix.md) compares the SDK, ext_authz, gateway, and inline sensor surfaces. [**Install**](install.md) covers local runs, Kubernetes, and the environment knobs. [**Operations**](operations.md) covers backup, healthz, and capacity.
 </div>
 
 <div class="hopframe-card" markdown>
 ### I want to understand it
-[**What it catches**](capabilities.md) provides the concrete attack list. [**Architecture**](architecture.md) explains how the pieces fit. [**Threat model**](threat-model.md) defines what is in and out of scope.
+[**What it catches**](capabilities.md) is the concrete attack list. [**Architecture**](architecture.md) explains how the pieces fit. [**Threat model**](threat-model.md) defines what is in and out of scope.
 </div>
 
 <div class="hopframe-card" markdown>
 ### I'm comparing tools
-[**Compared to**](compare.md) provides a cited capability matrix against Bedrock Guardrails, Lakera, Model Armor, Runlayer, Operant, Lasso, Solo.io, Cisco, and IBM.
+[**Compared to**](compare.md) is a cited capability matrix against Bedrock Guardrails, Lakera, Model Armor, Runlayer, Operant, Lasso, Solo.io, Cisco, and IBM.
 </div>
 
 <div class="hopframe-card" markdown>
 ### I want to drive it from code
-[**CLI**](cli.md) covers shell-driven workflows. [**HTTP API**](api.md) covers direct integration. Python and TypeScript SDKs live at [`sdk/python`](https://github.com/jLuPSP/hopframe/tree/main/sdk/python) and [`sdk/typescript`](https://github.com/jLuPSP/hopframe/tree/main/sdk/typescript).
+[**CLI**](cli.md) covers shell-driven workflows. [**HTTP API**](api.md) covers direct integration. The not-yet-published Python and TypeScript SDKs live at [`sdk/python`](https://github.com/jLuPSP/hopframe/tree/main/sdk/python) and [`sdk/typescript`](https://github.com/jLuPSP/hopframe/tree/main/sdk/typescript).
 </div>
 
 <div class="hopframe-card" markdown>
 ### I want to deploy at a managed agent runtime
-[**Deployment shapes**](deployment-shapes.md) covers AWS Bedrock Agents, OpenAI Assistants, Azure AI Foundry, and Vertex AI Agent Engine. [**Vertex AI**](agent-engine.md) has a dedicated walkthrough.
+[**Where it runs**](surface-matrix.md) and the [Install](install.md) page cover the surfaces and their placements. [**Vertex AI**](agent-engine.md) has a dedicated walkthrough.
 </div>
 
 <div class="hopframe-card" markdown>
 ### I want to contribute
-[**Developer guide**](developer.md) provides the codebase walkthrough. [**Policies**](policies.md) explains the policy resource model. Detection rules under [`content/`](https://github.com/jLuPSP/hopframe/tree/main/content) accept Apache 2.0 contributions.
+[**Developer guide**](developer.md) is the codebase walkthrough. [**Policies**](policies.md) explains the policy resource model. Detection rules under [`content/`](https://github.com/jLuPSP/hopframe/tree/main/content) accept Apache 2.0 contributions.
 </div>
 
 </div>
 
 ## Status
 
-Alpha. Hopframe is suitable for design-partner pilots, internal evaluation, homelab, and small-team production. Regulated workloads require your own validation. Hopframe does not yet support multi-region active-active or anything requiring a SOC 2 attestation. See [Roadmap](roadmap.md).
+Alpha. Hopframe suits design-partner pilots, internal evaluation, homelab, and small-team production. Regulated workloads require your own validation. Hopframe does not yet support multi-region active-active or anything requiring a SOC 2 attestation. See [Roadmap](roadmap.md).
 
 ## License
 

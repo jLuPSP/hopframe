@@ -1,21 +1,21 @@
 # CLI
 
-`hopframe` is the operator CLI. It wraps the same `/v1/*` API that the operator UI consumes. You can reproduce any UI operation from a shell script or a CI step.
+`hopframe` is the operator CLI. It wraps the same `/v1/*` API the UI consumes, so any UI operation can run from a shell script or a CI step.
 
 ## Install
 
-The CLI is built alongside the rest of the binaries:
+The CLI builds alongside the other binaries:
 
 ```bash
 make build
 ./bin/hopframe help
 ```
 
-Add `bin/` to your `PATH` for convenience.
+Add `bin/` to your `PATH`.
 
 ## Configure
 
-Two environment variables configure the CLI, and each has a flag override. Flags can appear before or after the subcommand and accept either `--flag value` or `--flag=value`.
+Two environment variables configure the CLI; each has a flag override. Flags can appear before or after the subcommand, as `--flag value` or `--flag=value`.
 
 | Variable | Flag | Default | Purpose |
 | --- | --- | --- | --- |
@@ -27,11 +27,11 @@ hopframe --server https://hopframe.acme.svc:7090 --token "$TOKEN" events list
 hopframe events list --server=https://hopframe.acme.svc:7090 --token="$TOKEN"
 ```
 
-In the demo mode (no auth), no token is needed.
+The demo mode (no auth) needs no token.
 
 ## Output
 
-The CLI writes JSON to stdout. Pipe it through `jq` for human consumption:
+The CLI writes JSON to stdout; pipe it through `jq`:
 
 ```bash
 hopframe events list --action block | jq '.records | length'
@@ -102,7 +102,7 @@ hopframe tokens mint --name ci-pipeline --role editor --tenant acme
 hopframe tokens revoke tok_a3f9b1
 ```
 
-The mint response includes the secret value once; copy it into your CI's secret store immediately.
+The mint response shows the secret once; copy it into your CI's secret store immediately.
 
 ### Users
 
@@ -112,7 +112,7 @@ hopframe users add --username alice --password 's3cret123' --role admin --tenant
 hopframe users password alice --password 'newpassword'
 ```
 
-User accounts only exist when the control plane is configured with `HOPFRAME_USERS_PATH`.
+User accounts exist only when the control plane sets `HOPFRAME_USERS_PATH`.
 
 ## Use in CI
 
@@ -142,4 +142,4 @@ hopframe-export \
   --sign-key data/signing.seed
 ```
 
-The output directory contains a `manifest.json`, one canonical-bytes file per record, signatures, a Merkle root, and a `VERIFY.md`. An auditor can follow it without contacting the control plane.
+The output directory holds a `manifest.json`, one canonical-bytes file per record, signatures, a Merkle root, and a `VERIFY.md` an auditor can follow without contacting the control plane.

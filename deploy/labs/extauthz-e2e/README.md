@@ -22,9 +22,9 @@ docker compose down -v --rmi local
 
 | Request | Result |
 |---|---|
-| Normal tool call | **allowed** — the MCP server answers (`200`) |
-| Tool call carrying an AWS key | **blocked** — `403`, the server is never reached |
-| `tools/list` with a poisoned description | **allowed through** — ext_authz only checks the request, not the reply |
+| Normal tool call | **allowed**: the MCP server answers (`200`) |
+| Tool call carrying an AWS key | **blocked**: `403`, the server is never reached |
+| `tools/list` with a poisoned description | **allowed through**: ext_authz only checks the request, not the reply |
 
 That last row is the surface's known limit: ext_authz inspects requests, not
 replies, so a poisoned response slips past it. The full gateway and inline

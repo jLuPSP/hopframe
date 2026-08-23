@@ -94,8 +94,7 @@ nav:
   - Quickstart: quickstart.md
   - Install:
     - Where it runs: surface-matrix.md
-    - Modes: install.md
-    - Deployment shapes: deployment-shapes.md
+    - Deploy: install.md
     - Vertex AI Agent Engine: agent-engine.md
   - Concepts:
     - What it catches: capabilities.md

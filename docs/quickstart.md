@@ -1,6 +1,6 @@
 # Quickstart
 
-You can go from clone to running in five minutes. You need no accounts, signups, or sudo.
+Clone to running takes five minutes and needs no accounts, signups, or sudo.
 
 ## Pick your path
 
@@ -14,7 +14,7 @@ You can go from clone to running in five minutes. You need no accounts, signups,
     make demo
     ```
 
-    `make demo` builds binaries (~10s the first time, then cached) and boots the full stack with bundled stubs. It plays the cinematic blind-spot attack story, seeds four sample policies, and starts a continuous traffic generator so the UI never goes silent.
+    `make demo` builds the binaries, boots the stack with bundled stubs, replays the blind-spot attack story, seeds four sample policies, and starts a traffic generator.
 
 === "With Docker"
 
@@ -26,13 +26,13 @@ You can go from clone to running in five minutes. You need no accounts, signups,
     docker compose up
     ```
 
-    The first boot compiles every binary inside the multi-stage build (~1-2 minutes). It then runs the control plane + sensor against a bundled stub MCP. You do not need to install Go.
+    The first boot compiles every binary inside the multi-stage build (~1-2 minutes). It then runs the control plane + sensor against a bundled stub MCP. Go is not required.
 
 Open [http://127.0.0.1:7090](http://127.0.0.1:7090) for the UI.
 
 ## Common modifiers
 
-These modifiers apply to either path and work together.
+These modifiers work with either path and can be combined.
 
 | Variable | Effect |
 | --- | --- |
@@ -57,7 +57,7 @@ After boot, **point your agent at `http://127.0.0.1:7080/mcp` instead of your MC
 
 ## Tour the UI
 
-[http://127.0.0.1:7090](http://127.0.0.1:7090) is the operator UI. It includes these pages:
+The operator UI at [http://127.0.0.1:7090](http://127.0.0.1:7090) has these pages:
 
 - **`/`** &middot; live event stream
 - **`/dashboard`** &middot; time-series charts (events per minute, top categories, top sensors, action mix)
@@ -94,11 +94,11 @@ Watch the events appear in the live stream.
 ./bin/hopframe sensors list
 ```
 
-Configure the CLI with `HOPFRAME_SERVER` (default `http://127.0.0.1:7090`) and `HOPFRAME_API_TOKEN` (no token needed for the demo). See the full [CLI](cli.md) reference.
+Configure the CLI with `HOPFRAME_SERVER` (default `http://127.0.0.1:7090`) and `HOPFRAME_API_TOKEN` (no token needed for the demo). See the [CLI](cli.md) reference.
 
 ## Author a policy
 
-In the UI, open `/policies`, fill the form, and select Create. You can also use the CLI:
+In the UI, open `/policies`, fill the form, and select Create. Or use the CLI:
 
 ```bash
 cat > my-policy.json <<'EOF'
@@ -114,7 +114,7 @@ EOF
 ./bin/hopframe policies create -f my-policy.json
 ```
 
-The sensor refetches policies on its next heartbeat (within 30 seconds). It then starts blocking matching traffic.
+The sensor refetches policies on its next heartbeat (within 30 seconds) and starts blocking matching traffic.
 
 Run a dry run before changing the policy to block:
 
@@ -124,7 +124,7 @@ Run a dry run before changing the policy to block:
 
 ## Stop
 
-`Ctrl+C` in the terminal that's running the stack. Or from another shell:
+`Ctrl+C` in the terminal running the stack. Or from another shell:
 
 ```bash
 make stop                 # for make demo / make run
@@ -137,10 +137,10 @@ docker compose down       # for docker compose up
     `make stop` clears Hopframe processes. If something else is on the port, stop that or change the listen address with `HOPFRAME_CONTROL_PLANE_ADDR=:7099` (and similar for sensor ports).
 
 ??? question "`go: command not found`"
-    Install Go 1.25+ from [go.dev/dl](https://go.dev/dl/), or use the Docker path above. No Go required there.
+    Install Go 1.25+ from [go.dev/dl](https://go.dev/dl/), or use the Docker path above.
 
 ??? question "Docker build is slow on first run"
-    The multi-stage Dockerfile compiles every binary from source. ~1-2 minutes on a modern laptop, then cached. After the first build, restarts are seconds.
+    The multi-stage Dockerfile compiles every binary from source, ~1-2 minutes on a modern laptop. After the first build, restarts are seconds.
 
 ??? question "I want to skip the cinematic narration"
     Use `make run` instead of `make demo`. It runs the same stack without narration.
@@ -153,8 +153,8 @@ docker compose down       # for docker compose up
 
 ## Next steps
 
-- [Install](install.md) &middot; pick the mode that fits your deployment
-- [Deployment shapes](deployment-shapes.md) &middot; AWS Bedrock, OpenAI, Azure, Vertex
+- [Install](install.md) &middot; run it, deploy to Kubernetes, or read the environment knobs
+- [Where it runs](surface-matrix.md) &middot; SDK, ext_authz, gateway, or inline sensor
 - [Policies](policies.md) &middot; author and deploy real-traffic policies
 - [Compared to](compare.md) &middot; capability matrix vs every named competitor
 - [Developer guide](developer.md) &middot; codebase walkthrough

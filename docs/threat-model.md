@@ -1,6 +1,6 @@
 # Hopframe threat model
 
-This document describes Hopframe's defenses, limits, and environmental assumptions. Read it before deploying Hopframe in production.
+This document covers Hopframe's defenses, limits, and environmental assumptions. Read it before deploying in production.
 
 ---
 
@@ -43,24 +43,24 @@ Sensitive material in tool arguments, tool results, or A2A task messages.
 
 Sensitive data flowing from an MCP tool result into an A2A task message destined for an untrusted peer.
 
-- **Attack pattern.** Agent calls an MCP tool, receives sensitive data, then delegates an A2A task to a peer agent, where that peer is malicious or external.
+- **Attack pattern.** Agent calls an MCP tool, receives sensitive data, then delegates an A2A task to a malicious or external peer.
 - **Why it is invisible to other tools.** MCP gateways see only MCP. A2A gateways see only A2A. LLM guardrails see neither.
 
-**Hopframe coverage:** `pkg/taint` tags MCP tool-call results with shingle fingerprints + source metadata. The A2A sensor checks task messages for reuse and blocks when the counterparty is not on the allowlist. Lineage works within one process (the combined `sensor`). An opt-in mode works across separate sensor processes or replicas via the control plane (fingerprints only, never the raw value). This capability is unique to Hopframe in this category. [taint.md](taint.md) covers its full threat model, evasion surface, and operational caveats.
+**Hopframe coverage:** `pkg/taint` tags MCP tool-call results with shingle fingerprints + source metadata. The A2A sensor checks task messages for reuse and blocks when the counterparty is not on the allowlist. Lineage works within one process (the combined `sensor`). An opt-in mode works across separate sensor processes or replicas via the control plane; it sends fingerprints plus an up-to-80-character sample used in findings. In the [mid-2026 landscape review](landscape-research.md), we did not verify this behavior in another surveyed tool. [taint.md](taint.md) covers its full threat model, evasion surface, and operational caveats.
 
 ---
 
 ## Out of scope
 
-Hopframe does not defend against the following threats.
+Hopframe does not defend against these threats.
 
 ### Model-side jailbreaks
 
-If a user convinces an LLM with safety training to misbehave purely through prose, the model provider handles that threat (Anthropic / OpenAI / your fine-tuning vendor). Hopframe inspects protocol traffic. It does not inspect LLM responses to direct chat. Pair Hopframe with an LLM guardrail (Lakera, Protect AI, NeMo) for that surface.
+If a user convinces an LLM with safety training to misbehave purely through prose, the model provider handles that threat (Anthropic / OpenAI / your fine-tuning vendor). Hopframe inspects protocol traffic and does not inspect LLM responses to direct chat. Pair Hopframe with an LLM guardrail (Lakera, Protect AI, NeMo) for that surface.
 
 ### Application logic flaws in your tools
 
-Hopframe will not catch SSRF in your `fetch` tool, SQLi in your `database` tool, or authn bypass in your custom MCP server. These are bugs in your tools. Use the same SAST, DAST, and dependency-scanning tooling you would use for any HTTP service.
+Hopframe will not catch SSRF in your `fetch` tool, SQLi in your `database` tool, or authn bypass in your custom MCP server. Use the same SAST, DAST, and dependency-scanning tooling you would use for any HTTP service.
 
 ### Authentication and authorization
 
@@ -68,11 +68,11 @@ Hopframe forwards Authorization headers but does not validate or refresh tokens.
 
 ### Resource abuse
 
-Hopframe applies a per-IP rate limit to `/v1/*` writes when `HOPFRAME_RATE_LIMIT_RPS` is set. It counts rejected requests in `hopframe_rate_limited_total`. This guard protects the control plane. It does not protect your downstream tools. The detection pipeline holds at ~115k evals/sec. A misbehaving agent making 10,000 tool calls per second will overwhelm your tools before the sensor becomes the bottleneck. The sensor will not stop the abuse on its own. For tool-side quota and runaway-loop protection, pair Hopframe with an API gateway that rate-limits the upstream.
+Hopframe applies a per-IP rate limit to `/v1/*` writes when `HOPFRAME_RATE_LIMIT_RPS` is set and counts rejected requests in `hopframe_rate_limited_total`. This guard protects the control plane. It does not protect your downstream tools. The detection pipeline holds at ~115k evals/sec. A misbehaving agent making 10,000 tool calls per second will overwhelm your tools before the sensor becomes the bottleneck. For tool-side quota and runaway-loop protection, pair Hopframe with an API gateway that rate-limits the upstream.
 
 ### Network-layer threats
 
-DDoS, TLS termination, IP allowlists, and DNS rebinding are out of scope. Run Hopframe behind a WAF (Cloudflare, BIG-IP) or inside a VPC. Another system must handle the network edge.
+DDoS, TLS termination, IP allowlists, and DNS rebinding are out of scope. Run Hopframe behind a WAF (Cloudflare, BIG-IP) or inside a VPC.
 
 ### Compliance auto-pilot
 
@@ -80,7 +80,7 @@ Hopframe makes evidence verifiable. It does not automate controls. For SOC2, HIP
 
 ### Detection content gaps
 
-Hopframe ships 58 rules and a heuristic classifier scoring F1=1.0 on the 84-sample seed corpus at `bench/corpus/v1.jsonl`. Both are growing. **Expect false negatives on novel attacks while the registry is below its 200-rule target. Expect them until validation against public attack libraries (HarmBench, JailbreakBench, AgentDojo) is complete.** Open issues / PRs at the main repo when you find them.
+Hopframe ships 58 rules and a heuristic classifier scoring F1=1.0 on the 84-sample seed corpus at `bench/corpus/v1.jsonl`. Both are growing. **Expect false negatives on novel attacks until the registry reaches its 200-rule target and validation against public attack libraries (HarmBench, JailbreakBench, AgentDojo) is complete.** Open issues / PRs at the main repo when you find them.
 
 ---
 
@@ -88,15 +88,15 @@ Hopframe ships 58 rules and a heuristic classifier scoring F1=1.0 on the 84-samp
 
 Hopframe assumes:
 
-1. **The control plane is trusted.** It holds the audit log, the chain head, and the rule packs. Compromise of the control plane defeats the integrity story. Run it in your trust boundary, behind your IAM, with mTLS on the sensor link.
+1. **The control plane is trusted.** It holds the audit log, the chain head, and the rule packs. Its compromise defeats the integrity story. Run it in your trust boundary, behind your IAM, with mTLS on the sensor link.
 
-2. **The sensor is trusted.** It sits inline; if an attacker controls the sensor binary, they can drop or rewrite traffic at will. Pin sensor images, sign your deployments, run with `gcr.io/distroless/static-debian12:nonroot`.
+2. **The sensor is trusted.** It sits inline; an attacker who controls the sensor binary can drop or rewrite traffic. Pin sensor images, sign your deployments, run with `gcr.io/distroless/static-debian12:nonroot`.
 
-3. **The detection content is trusted.** Rules are loaded from disk; bad rules can produce false negatives. Review every PR to `content/`. The compatibility-matrix and corpus are how community quality is verified.
+3. **The detection content is trusted.** Rules are loaded from disk; bad rules can produce false negatives. Review every PR to `content/`. The compatibility-matrix and corpus verify community quality.
 
 4. **Time is roughly synchronized.** Behavioral anomaly detection uses windowed counts; severe clock skew between sensor and control plane will distort sparkline / histogram / spike detection. NTP your hosts.
 
-5. **The chain genesis (when rotated) is trusted.** A side-channel adversary who replaces both the log and the `<log>.genesis` file simultaneously can hide a rotation. Treat the genesis file with the same protection as the log itself.
+5. **The chain genesis (when rotated) is trusted.** A side-channel adversary who replaces both the log and the `<log>.genesis` file simultaneously can hide a rotation. Give the genesis file the same protection as the log.
 
 ---
 

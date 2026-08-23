@@ -1,15 +1,15 @@
 # HTTP API reference
 
-Hopframe is API-first. Every operator action in the UI is a thin client over `/v1/*`. The CLI ([docs/cli.md](cli.md)) wraps the same endpoints. SDKs ([Python](https://github.com/jLuPSP/hopframe/tree/main/sdk/python), [TypeScript](https://github.com/jLuPSP/hopframe/tree/main/sdk/typescript)) only emit events to the ingest endpoint.
+Hopframe is API-first. The UI and the CLI ([docs/cli.md](cli.md)) are thin clients over the same `/v1/*` endpoints. SDKs ([Python](https://github.com/jLuPSP/hopframe/tree/main/sdk/python), [TypeScript](https://github.com/jLuPSP/hopframe/tree/main/sdk/typescript)) only emit events to the ingest endpoint.
 
 ## Conventions
 
-- **Base URL.** `http://your-control-plane:7090` for the demo or homelab mode. HTTPS is supported via `--tls-cert` + `--tls-key` flags on the control-plane binary.
-- **Auth.** Send a bearer token in the `Authorization` header, the same value in a `?token=` query param (for SSE clients that cannot set headers), or a `hopframe_session` cookie set by `/auth/login`. The API is open when no auth is configured (no-auth demo).
-- **Content type.** Requests with bodies must send `Content-Type: application/json`. Responses are JSON except for exports. `/v1/events.csv` returns CSV, and `/v1/events.ndjson` returns NDJSON.
-- **Errors.** The API returns plain text on `4xx`/`5xx` for now (the body is the error message). A future v2 will normalize to `{"error": "...", "code": "..."}`. Status codes are accurate today, so rely on them.
-- **Pagination.** List endpoints accept `?limit=N` and `?since_seq=N`. Default limit is 50; max 10000.
-- **Rate limiting.** When `HOPFRAME_RATE_LIMIT_RPS` is set, `/v1/*` enforces a per-IP token bucket. Rejected requests return `429 Too Many Requests` with `Retry-After: 1`.
+- **Base URL.** `http://your-control-plane:7090` for demo or homelab mode. The `--tls-cert` + `--tls-key` flags on the control-plane binary enable HTTPS.
+- **Auth.** Send a bearer token in the `Authorization` header, the same value in a `?token=` query param (for SSE clients that cannot set headers), or a `hopframe_session` cookie set by `/auth/login`. With no auth configured (no-auth demo), the API is open.
+- **Content type.** Requests with bodies must send `Content-Type: application/json`. Responses are JSON except exports: `/v1/events.csv` returns CSV, `/v1/events.ndjson` returns NDJSON.
+- **Errors.** The API returns plain text on `4xx`/`5xx` for now (the body is the error message). A future v2 will normalize to `{"error": "...", "code": "..."}`; status codes will not change, so rely on them.
+- **Pagination.** List endpoints accept `?limit=N` (default 50, max 10000) and `?since_seq=N`.
+- **Rate limiting.** When `HOPFRAME_RATE_LIMIT_RPS` is set, `/v1/*` enforces a per-IP token bucket. Rejections return `429 Too Many Requests` with `Retry-After: 1`.
 
 ## Roles
 
@@ -95,15 +95,15 @@ Query recent events. All filters are optional and AND together.
 
 ### `GET /v1/events/stream`
 
-Server-Sent Events live stream. Subscribe with `?backlog=N` to receive the most recent N records before the live tail starts. The browser cannot set headers on `EventSource`; use `?token=` for auth.
+Server-Sent Events live stream. `?backlog=N` returns the most recent N records before the live tail starts. The browser cannot set headers on `EventSource`; use `?token=` for auth.
 
 ### `GET /v1/events.csv` / `GET /v1/events.ndjson`
 
-The same filters as `GET /v1/events` produce a downloadable file with a chain-proof trailer. The trailer binds the export to a specific chain head. An auditor can verify that the file was not altered after it left your control plane. Headers `X-Hopframe-Chain-Head` / `X-Hopframe-Exported-At` / `X-Hopframe-Record-Count` mirror the trailer fields.
+The same filters as `GET /v1/events` produce a downloadable file with a chain-proof trailer. The trailer binds the export to a specific chain head, so an auditor can verify the file was not altered after it left your control plane. Headers `X-Hopframe-Chain-Head` / `X-Hopframe-Exported-At` / `X-Hopframe-Record-Count` mirror the trailer fields.
 
 ### `GET /v1/records/{seq}`
 
-The per-record inspector returns the canonical bytes and the per-record Ed25519 signature (when a signing key is configured). It also returns a Merkle proof that ties the record to a snapshot of recent records. The UI's `/records` page verifies the signature in the browser.
+The per-record inspector returns the canonical bytes, the per-record Ed25519 signature (when a signing key is configured), and a Merkle proof tying the record to a snapshot of recent records. The UI's `/records` page verifies the signature in the browser.
 
 ```json
 {
@@ -119,7 +119,7 @@ The per-record inspector returns the canonical bytes and the per-record Ed25519 
 
 ### `GET /v1/agent-runs/{id}/timeline`
 
-Forensic replay. Returns every cached event for the given `agent_run_id` in ascending sequence order. Use to reconstruct one agent's session across MCP and A2A.
+Forensic replay. Returns every cached event for the given `agent_run_id` in ascending sequence order, reconstructing one agent's session across MCP and A2A.
 
 ## Policies
 
@@ -148,7 +148,7 @@ A policy body:
 }
 ```
 
-The resolution rule selects the most-specific scope (server > sensor > tenant > org default). Within ties, the strongest mode wins. See [Policies](policies.md) for the full semantics.
+Resolution selects the most-specific scope (server > sensor > tenant > org default); within ties, the strongest mode wins. See [Policies](policies.md) for the full semantics.
 
 ## Sensors
 
@@ -222,7 +222,7 @@ Anchor response:
 | `POST` | `/v1/tokens` | Mint a new token (returns secret once) | admin |
 | `DELETE` | `/v1/tokens/{id}` | Revoke | admin |
 
-Token mint response (the only time the secret value is shown):
+Token mint response (the secret appears only here):
 
 ```json
 {
@@ -263,7 +263,7 @@ These power the `/dashboard` page. All return `{"<resource>": [...]}` shapes.
 
 ## Error responses
 
-A non-2xx response carries a plain-text body with the error message. Common codes:
+Common codes:
 
 | Status | When |
 | --- | --- |
@@ -275,5 +275,3 @@ A non-2xx response carries a plain-text body with the error message. Common code
 | 429 | Rate limit exceeded; honor `Retry-After` |
 | 500 | Server error. Check the control-plane log. |
 | 503 | One or more `/healthz` checks failed |
-
-A future v2 will move error bodies to a normalized JSON shape. The status codes will not change.

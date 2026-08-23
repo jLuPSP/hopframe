@@ -25,7 +25,7 @@
 
 **A security mesh for agent traffic.** Hopframe sits inline on MCP and A2A protocol wires. It catches the attacks model-boundary guardrails can't see. It writes a hash-chained, signed audit record that an auditor can verify offline.
 
-If your agents call MCP servers, talk to other agents, or run on someone's infrastructure, they use wires that Bedrock Guardrails, Model Armor, and Lakera Guard never inspect. A poisoned `tools/list` description goes straight to the model. A tool result with a leaked API key goes back to the agent. An A2A peer changes mid-task. None of it touches the prompt-response channel that a model-layer filter inspects. **Hopframe sits one layer up on the protocol wire and catches all of it.**
+Agents that call MCP servers or talk to other agents use protocol traffic that model-boundary guardrails do not inspect. A poisoned `tools/list` description can reach the model, a tool result can carry a leaked key, and an A2A peer can change mid-task. **Hopframe sits on those MCP and A2A wires so it can inspect them before forwarding.**
 
 ```mermaid
 flowchart LR
@@ -46,10 +46,10 @@ flowchart LR
 
 ## What it does at the wire
 
-- **Poisoned tool descriptions get blocked at the wire**, before the agent's model ever reads them. The sensor inspects every `tools/list` response and quarantines tools whose descriptions carry instruction-override patterns.
+- **Poisoned tool descriptions get blocked at the wire**, before the agent's model reads them. The sensor inspects every `tools/list` response and quarantines tools carrying instruction-override patterns.
 - **Cross-protocol leaks get caught.** An MCP tool returns sensitive data; the agent forwards it in an A2A task to an unallowlisted peer. Hopframe blocks the leak. No model-layer filter sees this; it spans two protocol hops.
-- **Every event becomes evidence.** The log uses SHA-256 hash chains, optional Ed25519 per-record signatures, and optional Sigstore Rekor anchoring. A regulator can re-walk the chain in a six-month report. Selective disclosure lets one record go to an auditor without revealing the rest.
-- **Editable policies, hot-reloaded.** "Block tool poisoning on the github MCP for tenant acme; warn on prompt injection elsewhere." You can author policies in the UI or with `POST /v1/policies` and dry-run them against the last 1000 events. Sensors apply them on the next heartbeat with no restart.
+- **Every event becomes evidence.** The log uses SHA-256 hash chains, optional Ed25519 per-record signatures, and optional Sigstore Rekor anchoring. A regulator can re-walk the chain in a six-month report. Selective disclosure sends one record to an auditor without revealing the rest.
+- **Editable policies, hot-reloaded.** "Block tool poisoning on the github MCP for tenant acme; warn on prompt injection elsewhere." Author policies in the UI or with `POST /v1/policies` and dry-run them against the last 1000 events. Sensors apply them on the next heartbeat with no restart.
 - **Multi-tenant.** Tokens are scope-bound to a tenant; reads filter, writes pin `event.tenant_id`. Same binary serves a homelab and a regulated tenant.
 
 ## What it looks like
@@ -78,9 +78,7 @@ flowchart LR
 
 ## Run it
 
-Pick the path that matches what you already have installed.
-
-**With Go 1.25+** (recommended; one-line install):
+**With Go 1.25+** (recommended):
 
 ```bash
 git clone https://github.com/jLuPSP/hopframe.git
@@ -103,27 +101,25 @@ After either, repoint your agent at `http://127.0.0.1:7080/mcp` instead of your 
 
 - `A2A_UPSTREAM=http://your-a2a-peer:8080` wires an A2A sensor on `:7081` (Docker: `docker compose --profile a2a up`).
 - `SECURE=1` (make only, today) enables bearer auth, role tokens (viewer/editor/admin/owner), tenant scoping, signing, and seeded sample policies. Tokens print on stdout. OIDC and Rekor stay off (external infra; see [`docs/install.md`](docs/install.md)).
-- Drop `UPSTREAM` from the make path to use a bundled stub MCP and poke at the UI without any setup.
+- Drop `UPSTREAM` from the make path to use a bundled stub MCP and poke at the UI with no setup.
 
 For Kubernetes, the [Helm chart](deploy/helm/hopframe/) covers production deployments. Every release tag publishes pre-built binaries, multi-arch container images on `ghcr.io/jlupsp/hopframe`, and Sigstore-signed checksums. See [Releases](https://github.com/jLuPSP/hopframe/releases). The full references are [`docs/install.md`](docs/install.md), [CLI](docs/cli.md), and [HTTP API](docs/api.md).
 
 ## Why this exists
 
-Every AI security tool sits at the model boundary. Bedrock Guardrails, Model Armor, Lakera Guard, and NeMo inspect the prompt going into the LLM and the response coming back.
+Every AI security tool sits at the model boundary, inspecting the prompt going into the LLM and the response coming back. Agents have other wires: the MCP tool description served by a server, the tool result that comes back, and the A2A task envelope between agents. These are protocol messages rather than prompts, so no model-layer filter sees them.
 
-Agents have other wires: the MCP tool description served by a server, the tool result that comes back, and the A2A task envelope between agents. None of these traverse a model-layer filter because they are protocol messages rather than prompts. The model reads a poisoned `tools/list` description directly, with nothing in the way.
-
-The longer story, including the build decisions and an honest read of the landscape, is a case study: [Building Hopframe](https://jlu.dev/blog/building-hopframe/).
+The build decisions and a read of the landscape are in a case study: [Building Hopframe](https://jlu.dev/blog/building-hopframe/).
 
 ## Where it sits in the landscape
 
-The cited research is in [docs/landscape-research.md](docs/landscape-research.md). The full matrix is in [docs/compare.md](docs/compare.md). The short version, as of mid-2026, follows.
+The cited research is in [docs/landscape-research.md](docs/landscape-research.md) and the full matrix in [docs/compare.md](docs/compare.md). The short version, as of mid-2026, follows.
 
-The agent-security space sorts into four layers: model-boundary guardrails on the prompt/response channel (Bedrock Guardrails, Model Armor, Lakera, NeMo), MCP/agent gateways doing admission and routing, inline protocol-wire inspection, and audit/provenance. Hopframe combines the last two layers, which differentiates it. The model-boundary tools work at a different layer. You stack them with Hopframe.
+The agent-security space sorts into four layers: model-boundary guardrails on the prompt/response channel (Bedrock Guardrails, Model Armor, Lakera, NeMo), MCP/agent gateways doing admission and routing, inline protocol-wire inspection, and audit/provenance. Hopframe combines the last two, which differentiates it. Model-boundary tools work at a different layer; stack them with Hopframe.
 
-**The closest peer is [Solo.io's agentgateway](https://www.solo.io/products/agentgateway).** It is a credible, open-source (Apache 2.0, Linux Foundation) proxy. Like Hopframe, it sits inline on both MCP and A2A with no code changes. It also inspects MCP tool calls beyond the prompt through tool-server fingerprinting, versioning, and runtime policy against poisoning and rug-pulls. If you want this with a vendor and a roadmap behind it, look there first. Hopframe instead uses a four-stage content pipeline (regex, heuristic classifier, LLM judge, behavioral). Its guardrails run on the protocol content as well as the model boundary. It ships a tamper-evident audit log (hash chain + Ed25519 + Sigstore Rekor). Agentgateway's "verifiable audit trail" claim did not hold up under checking.
+**The closest peer is [Solo.io's agentgateway](https://www.solo.io/products/agentgateway).** It is a credible, open-source (Apache 2.0, Linux Foundation) proxy. Like Hopframe, it sits inline on both MCP and A2A with no code changes. It inspects MCP tool calls beyond the prompt through tool-server fingerprinting, versioning, and runtime policy against poisoning and rug-pulls. If you want a vendor and a roadmap behind it, look there first. Hopframe instead uses a four-stage content pipeline (regex, heuristic classifier, LLM judge, behavioral). Its guardrails run on protocol content as well as the model boundary. It ships a tamper-evident audit log (hash chain + Ed25519 + Sigstore Rekor). Agentgateway's "verifiable audit trail" claim did not hold up under checking.
 
-**I could not find a peer for cross-protocol data taint** (an MCP tool result leaking into an A2A task). I also found no peer for A2A task-state or counterparty drift mid-task, or a unified MCP+A2A forensic timeline. That is "as far as I looked," not a proof of absence. The 2025-2026 startup wave (Runlayer, Operant AI, Lasso, Cisco AI Defense, and others) moves fast. I could not verify several tools in my research.
+**I could not find a peer for cross-protocol data taint** (an MCP tool result leaking into an A2A task). I found none for A2A task-state or counterparty drift mid-task, or a unified MCP+A2A forensic timeline. That is "as far as I looked," not a proof of absence. The 2025-2026 startup wave (Runlayer, Operant AI, Lasso, Cisco AI Defense, and others) moves fast. I could not verify several of its tools.
 
 **The threat model is no longer speculative.** Since I started this, OWASP shipped a [Top 10 for Agentic Applications (2026)](https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/). Its ASI07 names insecure inter-agent (A2A and MCP) communication. Its [MCP Top 10](https://owasp.org/www-project-mcp-top-10/) calls out tool poisoning (MCP03) and lack of audit and telemetry (MCP08). It recommends the same SHA-256-hashed, append-only audit that Hopframe implements.
 
@@ -132,7 +128,6 @@ The agent-security space sorts into four layers: model-boundary guardrails on th
 - A tool result body contains `AKIAIOSFODNN7EXAMPLE` or a PEM private key. Hopframe flags it. If a policy says block, Hopframe drops it before it reaches the agent.
 - A `tools/list` description includes `<system>` tags or "ignore previous instructions" patterns. Quarantined; subsequent `tools/call` to the named tool short-circuits.
 - An A2A task transitions from `submitted` straight to `completed`, skipping `working`. Or the counterparty changes mid-task. Both recorded.
-- An MCP tool returns sensitive data; the agent forwards it to a different counterparty in an A2A task. Cross-protocol taint. Blocked.
 - An attacker paraphrases an instruction-override into novel language the regex pack does not match. The heuristic classifier catches the feature-density signal anyway.
 
 Four-layer detection runs through regex packs (sub-5µs) → heuristic feature-density classifier (sub-30µs) → optional LLM judge for the uncertain band (300-1500ms) → behavioral anomaly detection on the control plane (continuous). Hopframe NFKC-normalizes and base64-decodes inputs before matching, so the obvious bypasses fail.
@@ -145,14 +140,14 @@ Alpha.
 
 - 22 Go packages tested under `-race`, 15 Python tests, 14 TypeScript tests, green on every commit.
 - Single-process control plane today. Postgres-backed HA is sketched in [`docs/roadmap.md`](docs/roadmap.md).
-- The detection corpus is small (84 samples, F1 = 1.0, which mostly tells you the corpus is small). Treat it as a floor; real traffic will surface rules I have not written.
-- Hopframe is a good fit for evaluation, a homelab, a small team, or anywhere you want evidence on agent traffic before you trust it. Validate it yourself before using it in a regulated workload.
+- The detection corpus is small (84 samples, F1 = 1.0; the perfect score reflects the corpus size). Treat it as a floor; real traffic will surface rules I have not written.
+- Hopframe fits evaluation, a homelab, a small team, or anywhere you want evidence on agent traffic before you trust it. Validate it yourself before a regulated workload.
 
-If you run it somewhere real, I would like to know what broke. Open an issue, or a [private security advisory](https://github.com/jLuPSP/hopframe/security/advisories/new) for anything security-sensitive.
+If you run it somewhere real, I would like to know what broke.
 
 ## Contributing
 
-The most useful contribution is a detection rule paired with a benchmark sample that exercises it. See [CONTRIBUTING.md](CONTRIBUTING.md). PRs welcome on rule packs, SDK adapters, doc fixes, and CI hardening.
+The most useful contribution is a detection rule paired with a benchmark sample that exercises it. See [CONTRIBUTING.md](CONTRIBUTING.md). PRs are welcome on rule packs, SDK adapters, doc fixes, and CI hardening.
 
 ## License & ownership
 
@@ -160,11 +155,11 @@ Copyright © 2026 **[Jordan Lu](https://github.com/jLuPSP)**. All rights reserve
 
 Hopframe ships under **two licenses, applied to different directories**:
 
-- The repository as a whole is **[Business Source License 1.1](LICENSE)**. The code converts to **[Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)** on a Change Date three years after each release. BSL is source-available and not OSI-approved. You can read, run, fork, and modify the code for any purpose **except offering a competing managed service**. That restriction lifts on the Change Date, when the release becomes Apache 2.0.
-- The **detection content** under [`content/`](content/) and the **benchmark corpus** under [`bench/corpus/`](bench/corpus/) are **[Apache License 2.0 today](content/LICENSE)**. The rule pack and corpus are explicitly OSI-approved open source. They can be freely incorporated into other security tools, research papers, and detection benchmarks. Apache requires preserving the copyright + license notice. The "Hopframe" name stays.
+- The repository as a whole is **[Business Source License 1.1](LICENSE)**. The code converts to **[Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)** on a Change Date three years after each release. BSL is source-available and not OSI-approved. You can read, run, fork, and modify the code for any purpose **except offering a competing managed service**.
+- The **detection content** under [`content/`](content/) and the **benchmark corpus** under [`bench/corpus/`](bench/corpus/) are **[Apache License 2.0 today](content/LICENSE)**, OSI-approved open source. They can be freely incorporated into other security tools, research papers, and detection benchmarks. Apache requires preserving the copyright + license notice. The "Hopframe" name stays.
 
-There are no proprietary feature gates. The BSL "no competing managed service" reservation keeps someone from reselling it wholesale as a hosted product before the Change Date. The code stays source-available for everyone else and converts to Apache 2.0 on schedule.
+There are no proprietary feature gates. The BSL reservation keeps someone from reselling Hopframe as a hosted product before the Change Date.
 
 Security disclosures: open a [private security advisory](https://github.com/jLuPSP/hopframe/security/advisories/new). Everything else: [open an issue](https://github.com/jLuPSP/hopframe/issues).
 
-Built by [Jordan Lu](https://github.com/jLuPSP). Detection-content format and contribution model follow the [OWASP](https://owasp.org/) tradition.
+Detection-content format and contribution model follow the [OWASP](https://owasp.org/) tradition.

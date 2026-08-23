@@ -11,7 +11,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### Added
 
 - **Gateway data-plane surfaces.** Two new ways to run Hopframe over the same detection pipeline. `mcp-extauthz` is an Envoy HTTP external-authorization adapter, so any Envoy-based gateway (Envoy, Istio, Gloo, Emissary) can get an allow/deny decision on inbound MCP with no per-gateway code. `mcp-gateway` is a native multiplexer that fronts many MCP upstreams at one address with full inline fidelity and shared quarantine/taint state. See [docs/surface-matrix.md](docs/surface-matrix.md) for the per-surface capability map and `deploy/labs/extauthz-e2e/` for a real-Envoy end-to-end lab.
-- **Python SDK published to PyPI.** The release workflow now builds and publishes the `hopframe` package via PyPI Trusted Publishing on tagged releases.
+- **Python SDK release path prepared.** The tag workflow builds the `hopframe` package and is ready to publish it through PyPI Trusted Publishing after the one-time PyPI project setup.
 
 ### Changed
 

@@ -1,7 +1,5 @@
 # Operations
 
-This page explains how to operate Hopframe. It covers persistence, backup, capacity, healthz semantics, metrics, and component failures.
-
 ## Persistence
 
 ### Backend choice: file vs Postgres
@@ -18,13 +16,13 @@ Pick the backend at boot via `HOPFRAME_STORE_DSN` (or `--store-dsn`):
 - **Empty / unset / file path:** file backend. `--log` controls the path.
 - **`postgres://...` or `postgresql://...`:** Postgres backend. Schema is created idempotently on first connect; no migration tool required.
 
-The hash-chain semantics (per-record SHA-256 over canonical bytes, prev-hash linking, Verify re-walks end-to-end) are identical in both backends. Per-record Ed25519 signatures, Merkle proofs, and Sigstore Rekor anchoring all work the same way.
+The hash-chain semantics (per-record SHA-256 over canonical bytes, prev-hash linking, Verify re-walks end-to-end) are identical in both backends, as are per-record Ed25519 signatures, Merkle proofs, and Sigstore Rekor anchoring.
 
-For Postgres, a `SELECT ... FOR UPDATE` row lock on the singleton chain-head row inside the append transaction guarantees append linearizability. Concurrent appenders serialize on the lock without serialization-failure retry loops. Use `sslmode=require` (or `verify-full` in production) for any non-localhost deployment.
+For Postgres, a `SELECT ... FOR UPDATE` row lock on the singleton chain-head row inside the append transaction guarantees append linearizability; concurrent appenders serialize on the lock without serialization-failure retry loops. Use `sslmode=require` (or `verify-full` in production) for any non-localhost deployment.
 
 ### Files on disk
 
-The control plane writes up to five artifacts to disk. The env vars determine which ones appear. Postgres replaces the events log when `HOPFRAME_STORE_DSN` is set.
+The control plane writes up to five artifacts to disk; env vars determine which appear. Postgres replaces the events log when `HOPFRAME_STORE_DSN` is set.
 
 | File | What | If it disappears |
 | --- | --- | --- |
@@ -38,7 +36,7 @@ Treat the audit chain like a database.
 
 ## Backup
 
-The chain is append-only NDJSON, so backup requires a file copy. Full nightly + incremental hourly is sufficient for most deployments.
+The chain is append-only NDJSON, so backup is a file copy. Full nightly + incremental hourly suffices for most deployments.
 
 ```bash
 # nightly (run from cron / systemd timer)
@@ -52,13 +50,13 @@ tar czf "/backup/hopframe-$TS.tar.gz" \
   /var/lib/hopframe/signing.seed
 ```
 
-Restore copies the file in the other direction. The binary picks up the existing chain at boot via the `events.ndjson.genesis` sidecar.
+Restore copies in the other direction. The binary picks up the existing chain at boot via the `events.ndjson.genesis` sidecar.
 
-For higher durability, set `HOPFRAME_REKOR_URL` to point chain-head anchors at a Sigstore Rekor instance (public sigstore.dev or your own). The witnessed log index gives every anchor a third-party-verifiable timestamp. That timestamp is harder to lose than a backup.
+For higher durability, set `HOPFRAME_REKOR_URL` to point chain-head anchors at a Sigstore Rekor instance (public sigstore.dev or your own). The witnessed log index gives every anchor a third-party-verifiable timestamp that is harder to lose than a backup.
 
 ## Healthz semantics
 
-`GET /healthz` returns 200 only when every component reports OK. It returns 503 on any failure. The body lists every check.
+`GET /healthz` returns 200 only when every component reports OK, 503 on any failure. The body lists every check.
 
 | Check | What it means |
 | --- | --- |
@@ -73,7 +71,7 @@ For higher durability, set `HOPFRAME_REKOR_URL` to point chain-head anchors at a
 | `content_version` | String: SHA-256 fold of the content manifest. |
 | `user_count` | Numeric. |
 
-A load balancer should treat 200 as "route traffic to this instance" and any non-200 as "drain me." An operator should treat a non-200 as a paging condition. The body identifies the degraded component.
+A load balancer should route to 200 and drain on any non-200. An operator should treat a non-200 as a paging condition; the body identifies the degraded component.
 
 ## Metrics
 
@@ -88,16 +86,16 @@ A load balancer should treat 200 as "route traffic to this instance" and any non
 | `hopframe_rate_limited_total` | counter | `path` | Requests rejected by the per-IP rate limiter. |
 | `hopframe_policy_changes_total` | counter | `op`, `tenant` | CRUD operations on policies. `op` is `create`, `update`, or `delete`. |
 
-A 10-30s scrape interval is sufficient.
+A 10-30s scrape interval suffices.
 
 ## Capacity
 
-These numbers come from a laptop benchmark. Treat them as lower bounds.
+These numbers are laptop-benchmark lower bounds.
 
-- **Detection pipeline:** 115k evals/sec, p99 ~ 160µs. Single inline sensor, no LLM judge. Adding the Layer 3 LLM judge moves the latency floor of the affected events to whatever the model returns (typically 300-1500ms). The judge is opt-in and only runs on the uncertain band.
-- **Audit chain append:** SHA-256 + JSON marshal + fsync per record. Roughly 5-15k records/sec on commodity NVMe. The fsync is the critical-path cost.
-- **In-memory cache:** the control plane keeps the last 1024 records hot for the UI and analytics. Bump `CacheCap` in the store options if your deployment runs higher-volume queries.
-- **Single-instance ceiling:** Hopframe v0.1 is single-process. Plan for one control-plane per cluster or environment. The Phase 2C HA migration in [roadmap.md](roadmap.md) moves persistence to Postgres so the control plane can run multi-instance behind a load balancer.
+- **Detection pipeline:** 115k evals/sec, p99 ~ 160µs. Single inline sensor, no LLM judge. The opt-in Layer 3 LLM judge runs only on the uncertain band and moves the latency floor of affected events to whatever the model returns (typically 300-1500ms).
+- **Audit chain append:** SHA-256 + JSON marshal + fsync per record. Roughly 5-15k records/sec on commodity NVMe; fsync is the critical-path cost.
+- **In-memory cache:** the control plane keeps the last 1024 records hot for the UI and analytics. Bump `CacheCap` in the store options for higher-volume queries.
+- **Single-instance ceiling:** Hopframe v0.1 is single-process; plan for one control-plane per cluster or environment. The Phase 2C HA migration in [roadmap.md](roadmap.md) moves persistence to Postgres so the control plane can run multi-instance behind a load balancer.
 
 For a homelab deployment serving 5-10 sensors and a handful of operators, a single 2-vCPU 4-GB-RAM container is overprovisioned. For a larger fleet (50+ sensors, sustained 10k+ events/sec), watch the `hopframe_chain_head_seq` rate and disk IOPS. You will hit fsync throughput before CPU capacity.
 
@@ -115,7 +113,7 @@ For a homelab deployment serving 5-10 sensors and a handful of operators, a sing
 
 ## Upgrade
 
-The control plane is a single binary. Upgrade it with these steps:
+The control plane is a single binary. To upgrade:
 
 1. Stop the current process.
 2. Replace the binary.
@@ -125,13 +123,13 @@ The audit chain carries forward. Sensors reconnect on their next heartbeat. [CHA
 
 ## Disaster recovery
 
-If you lose the control-plane host entirely, follow these steps:
+If you lose the control-plane host entirely:
 
 1. Restore the latest `data/` backup to the new host.
 2. Boot the binary with the same env (`HOPFRAME_API_TOKEN`, etc.).
 3. Sensors reconnect on their next heartbeat with no state lost.
 
-The audit chain genesis sidecar (`events.ndjson.genesis`) carries the chain start hash across the rotation boundary. Losing this file while retaining the chain makes integrity verification impossible. Back up the genesis file alongside the chain.
+The audit chain genesis sidecar (`events.ndjson.genesis`) carries the chain start hash across the rotation boundary. Losing it while retaining the chain makes integrity verification impossible, so back it up alongside the chain.
 
 At v0.1, multi-region or cross-region failover only supports active-passive with the passive instance restored from backup. Phase 2C in [roadmap.md](roadmap.md) tracks the active-active HA work.
 
@@ -143,7 +141,7 @@ For homelab use on a private VPC, plain HTTP is acceptable. For anything interne
 
 ## Mounting on Kubernetes
 
-The Helm chart at `deploy/helm/hopframe/` deploys the control plane with a PVC for `/var/lib/hopframe` and configurable retention. It surfaces the bearer-token / per-tenant / role-token env vars in `values.yaml`. See the chart's README for the full set of values.
+The Helm chart at `deploy/helm/hopframe/` deploys the control plane with a PVC for `/var/lib/hopframe` and configurable retention. It surfaces the bearer-token / per-tenant / role-token env vars in `values.yaml`. See the chart's README for the full value set.
 
 ```bash
 helm upgrade --install hopframe ./deploy/helm/hopframe \
@@ -154,12 +152,12 @@ helm upgrade --install hopframe ./deploy/helm/hopframe \
 
 ## Sensor side
 
-Sensors are stateless except for the durable spool. If a sensor pod dies and a new one starts, the following occurs:
+Sensors are stateless except for the durable spool. If a sensor pod dies and a new one starts:
 
 - Heartbeat resumes within 30s; the fleet view shows the old pod as stale and the new one as fresh.
 - The spool on the old volume is lost unless you mount it across pod restarts. For at-least-once delivery, give the sensor a small PVC for `data/mcp-spool/`.
 
-Sensor config lives in YAML loaded at boot. Restart the sensor to change the upstream URL or the rule directories. Policy and content updates flow over the heartbeat path and do not need a restart.
+Sensor config is YAML loaded at boot. Restart to change the upstream URL or rule directories; policy and content updates flow over the heartbeat path without a restart.
 
 ## Where to look in the code
 

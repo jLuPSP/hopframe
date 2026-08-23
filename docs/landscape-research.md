@@ -1,6 +1,6 @@
 # Agent-security landscape research (mid-2026)
 
-This cited research supports the Hopframe case study. It is calibrated and non-promotional.
+This research supports the Hopframe case study. Sources are cited per claim.
 A multi-agent deep-research pass generated it (5 angles, 23 sources fetched, 113 claims
 extracted, 25 adversarially verified with 3-vote refutation, 19 confirmed / 6 killed).
 
@@ -13,13 +13,13 @@ As of mid-2026 the AI agent-security landscape splits into four layers:
 - **(c) protocol-wire inline content inspection** of MCP/A2A traffic
 - **(d) audit / provenance / forensics**
 
-Hopframe's defensible position is the **combination of (c) + (d)**. It provides deep four-stage
+Hopframe's defensible position is the **combination of (c) + (d)**: deep four-stage
 in-environment detection on the live MCP *and* A2A wire plus a tamper-evident audit log
 (SHA-256 hash chain + Ed25519 signatures + Sigstore Rekor anchoring). No single surveyed
-tool provided all of these features: inline MCP+A2A wire detection in-environment, cross-protocol
+tool provided all of: inline MCP+A2A wire detection in-environment, cross-protocol
 data taint, A2A task-state/counterparty drift, unified MCP+A2A forensic timeline, and a
-hash-chained + signed + Rekor-anchored audit log. (This is an absence-of-evidence finding,
-with medium confidence, bounded by the tools surveyed.)
+hash-chained + signed + Rekor-anchored audit log. This is an absence-of-evidence
+finding with medium confidence, not proof that no implementation exists. See the caveats.
 
 ## The honest recalibration (read this before writing claims)
 

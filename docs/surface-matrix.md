@@ -1,39 +1,39 @@
 # Where Hopframe runs
 
-Hopframe is one detection engine that runs in several places. The engine
-(rules, quarantine, cross-protocol taint, the signed audit log) stays the same.
-Choose **where it sits** based on where your agents and tools live and how much
-enforcement you need.
+Hopframe can observe an agent from its code or inspect traffic on the wire.
+Choose a surface based on what you own and whether you need blocking.
 
-There are four ways to run it today, plus one on the way.
+There are four ways today, plus one planned.
 
 ## 1. In your agent's code: the SDK
 
-You import the package into your agent in its own language:
+The SDK packages are not on PyPI or npm yet. For now, install Python from
+the repository or link the TypeScript package locally:
 
-- **Python:** `pip install hopframe`
-- **TypeScript / JavaScript:** `npm install @hopframe/sdk`
+- **Python:** `pip install "hopframe @ git+https://github.com/jLuPSP/hopframe.git@main#subdirectory=sdk/python"`
+- **TypeScript / JavaScript:** clone the repo, then follow [`sdk/typescript/README.md`](https://github.com/jLuPSP/hopframe/tree/main/sdk/typescript)
 
 It hooks your agent's tool calls (LangChain, LangGraph, OpenAI Assistants,
-Vercel AI SDK, or direct calls) and reports them to the Hopframe timeline.
-This option requires no infrastructure and no traffic rerouting. It **observes
-and advises** without hard-blocking. Use it when you cannot sit on the wire or
-want visibility first.
+Vercel AI SDK, or direct calls) and sends them to a Hopframe control plane.
+It needs no traffic rerouting, but it still needs a control plane. It
+**observes and advises** without hard-blocking.
 
 ## 2. Bolt onto a gateway you already run: ext_authz
 
 If you already run Envoy (or Istio, Gloo, Emissary, Envoy AI Gateway),
 Hopframe plugs in as an authorization check. For every inbound MCP message
-the gateway asks Hopframe "allow or block?" and Hopframe answers after running
-the full detection pipeline. It requires no changes to your agents and writes
-the same audit log. It only sees messages going **to** the tool. It cannot see
-the tool's replies coming back. (`cmd/mcp-extauthz`.)
+the gateway asks Hopframe "allow or block?" Hopframe runs its request-side
+detectors and returns a decision. It requires no agent changes. With a control
+plane configured, its events join the same tamper-evident audit log. It sees
+only messages going **to** the tool, never the tool's replies coming back.
+(`cmd/mcp-extauthz`.)
 
 ## 3. Hopframe as your front door: the gateway
 
 Hopframe itself stands in front of many MCP servers at one address, routes
-each request to the right one, and inspects everything in **both**
-directions. It shares state (quarantine, taint) across all your tools. You host
+each request to the right one, and inspects MCP traffic in **both** directions.
+It shares quarantine and MCP-side taint state across those routes. Pair it with
+an A2A sensor, using the same `agent_run_id`, for MCP-to-A2A lineage. You host
 it. (`cmd/mcp-gateway`.)
 
 ## 4. In front of one tool: the inline sensor
@@ -54,22 +54,23 @@ Legend: ✓ yes · ~ partial / advisory · ✗ no
 
 | | SDK (Python / TS) | ext_authz | ext_proc *(planned)* | Gateway / inline sensor |
 |---|:--:|:--:|:--:|:--:|
-| No infrastructure to run | ✓ | ✗ | ✗ | ✗ |
+| No traffic rerouting | ✓ | ✗ | ✗ | ✗ |
 | No agent code changes | ✗ | ✓ | ✓ | ✓ |
 | Hard-blocks bad requests | ~ | ✓ | ✓ | ✓ |
 | Inspects tool **replies** (poisoned descriptions, leaked results) | ~ | ✗ | ✓ | ✓ |
-| Cross-protocol taint (MCP → A2A) | ~ | ✗ | ✓ | ✓ |
-| Tamper-evident audit log | ✓ | ✓ | ✓ | ✓ |
+| Cross-protocol taint (MCP → A2A) | ~ | ✗ | ✓ | ~¹ |
+| Tamper-evident audit log | ✓² | ✓² | ✓² | ✓² |
 
-**The SDK is the easiest and provides advisory results. ext_authz provides broad,
-no-code request coverage. The gateway and inline sensor provide full power and
-require hosting.** ext_authz never sees the reply, so a poisoned tool
-*description* slips past it. The gateway or sensor catches it. The
-`deploy/labs/extauthz-e2e/` lab demonstrates this.
+1. Requires both an MCP-observing and an A2A-observing surface with a shared run id. The combined sensor includes both.
+2. Requires events to reach a configured control plane; a local NDJSON sink alone is not signed.
+
+Because ext_authz never sees the reply, a poisoned tool *description* slips
+past it. The gateway or sensor catches it. The `deploy/labs/extauthz-e2e/`
+lab demonstrates this.
 
 ## How to pick
 
-- **Visibility and the fastest start:** SDK.
+- **Visibility without rerouting, advisory only:** SDK.
 - **An existing Envoy-style gateway, blocking, and no code changes:** ext_authz.
 - **Full protection with hosting:** Gateway (many tools) or inline sensor (one
   tool).
@@ -77,3 +78,19 @@ require hosting.** ext_authz never sees the reply, so a poisoned tool
 The surfaces stack. Run the SDK *and* a gateway on the same agent run and you
 get the agent's-eye view (which tool, which step) lined up with what crossed the
 wire on one timeline.
+
+## What no surface can see
+
+Hopframe inspects the wire when one end of the traffic is on infrastructure you
+own. Two cases have no third-party intercept today, Hopframe included:
+
+- **Both endpoints managed by the same cloud vendor** (a Bedrock Agent calling a
+  Bedrock-hosted tool, an OpenAI Assistant calling one of OpenAI's tools). The
+traffic never leaves the vendor's plane.
+- **Cross-vendor managed-to-managed** (a Bedrock Agent calling a third-party
+SaaS MCP). The traffic egresses the platform without crossing your
+infrastructure. The SaaS owner would have to run Hopframe in front of its own
+MCP service.
+
+Where those cells matter, pair Hopframe (protocol layer, customer side) with the
+platform's first-party model-layer guard. The two cover different surfaces.

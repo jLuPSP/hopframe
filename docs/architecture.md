@@ -1,6 +1,6 @@
 # Hopframe architecture
 
-This document describes how Hopframe's components fit together, the data flows between them, and the design choices behind each piece. Read it after the [README](https://github.com/jLuPSP/hopframe/blob/main/README.md), before contributing significant changes.
+Read this after the [README](https://github.com/jLuPSP/hopframe/blob/main/README.md) and before contributing significant changes.
 
 ---
 
@@ -45,18 +45,18 @@ flowchart LR
 
 Three flavours of producer feed the same control-plane log:
 
-1. **`mcp-sensor`** (HTTP). Reverse proxy in front of an HTTP MCP server. Inspects the request, applies the pipeline, forwards to upstream, then inspects the response (or stream).
+1. **`mcp-sensor`** (HTTP). Reverse proxy in front of an HTTP MCP server. Applies the pipeline to the request, forwards to upstream, then to the response (or stream).
 2. **`mcp-stdio-sensor`** (stdio). Spawns the upstream as a child process and parses newline-delimited JSON-RPC over the pipes.
-3. **`a2a-sensor`** (HTTP). Same shape as the MCP sensor, but speaks the A2A task envelope and exposes an agent-card validation hook.
-4. **`hopframe-py`** SDK. Python package that emits events directly from agent-framework callbacks (LangChain, LangGraph, CrewAI, OpenAI Assistants).
+3. **`a2a-sensor`** (HTTP). Like the MCP sensor, but speaks the A2A task envelope and exposes an agent-card validation hook.
+4. **`hopframe-py`** SDK. Python package that emits events from agent-framework callbacks (LangChain, LangGraph, CrewAI, OpenAI Assistants).
 
-All four emit the same `event.Event` JSON shape to the control plane.
+All four emit the same `event.Event` JSON shape.
 
 ---
 
 ## The detection pipeline
 
-Layered defense, ordered by cost:
+Detection runs in layers, ordered by cost:
 
 | Layer | What | Where | Latency | Coverage |
 |---|---|---|---|---|
@@ -65,11 +65,11 @@ Layered defense, ordered by cost:
 | 3 | LLM judge | `pkg/detect/llmjudge` | 300-1500ms | high-stakes calls the lower layers are unsure about; opt-in via `HOPFRAME_LLM_JUDGE_URL` |
 | 4 | Behavioral anomaly | `control-plane/behavior` | continuous | rate spikes, novel-peer-with-high-severity, findings-rate drift |
 
-The pipeline composes detectors via the `detect.Detector` interface. A `Verdict` accumulates findings; the `ModeResolver` (typically `ruleset.Ruleset.HighestMode`) walks findings and picks the strongest mode (monitor / warn / block).
+The pipeline composes detectors via the `detect.Detector` interface. A `Verdict` accumulates findings; the `ModeResolver` (typically `ruleset.Ruleset.HighestMode`) picks the strongest mode (monitor / warn / block).
 
-A few cross-cutting primitives sit alongside the layers:
+Cross-cutting primitives sit alongside the layers:
 
-- **`internal/quarantine`.** When a `tools/list` description triggers a high or critical finding, the named tool is added to a TTL-bounded quarantine. Subsequent `tools/call` to that tool short-circuit-block regardless of payload content.
+- **`internal/quarantine`.** When a `tools/list` description triggers a high or critical finding, the named tool enters a TTL-bounded quarantine. Subsequent `tools/call` to it short-circuit-block regardless of payload.
 - **`pkg/taint`.** MCP `tools/call` results are tagged with shingle fingerprints and source metadata. A2A task messages on the same `agent_run_id` are checked for reuse and blocked when a non-allowlisted peer would receive tagged data.
 - **`internal/taskstate`.** A2A task lifecycles tracked across calls. Drift, invalid transitions, and counterparty changes raise findings inline.
 - **`internal/counterparty`.** Per-peer reputation registry with severity-weighted scoring, time decay, and threshold alarms.
@@ -78,31 +78,31 @@ A few cross-cutting primitives sit alongside the layers:
 
 ## Cross-protocol correlation
 
-Sensors propagate `X-Hopframe-Agent-Run-Id`. If the inbound request carries one, the sensor uses it. Otherwise, it generates one with a `run-` prefix. The header rides through to the upstream and back to the client. The control plane indexes events by this id. Events from MCP, A2A, behavior, and the Python SDK for one agent run all land on the same forensic timeline (`/v1/agent-runs/{id}/timeline`).
+Sensors propagate `X-Hopframe-Agent-Run-Id`, using the inbound value or generating one with a `run-` prefix. The header rides through to the upstream and back to the client. The control plane indexes events by this id, so events from MCP, A2A, behavior, and the Python SDK for one agent run land on the same forensic timeline (`/v1/agent-runs/{id}/timeline`).
 
-This mechanism **automatically correlates MCP and A2A traffic for the same agent run**. No competitor offers this because no competitor sits on both protocols.
+In the [mid-2026 landscape review](landscape-research.md), we did not verify another surveyed tool that correlates MCP and A2A traffic per agent run.
 
 ---
 
 ## The audit log
 
-`control-plane/store` is an append-only NDJSON file with SHA-256 hash chaining. Each record's hash includes the previous record's hash. The design provides these guarantees:
+`control-plane/store` is an append-only NDJSON file with SHA-256 hash chaining. Each record's hash includes the previous record's hash, giving three guarantees:
 
-1. **Tamper detection.** Modifying any record visibly breaks the chain the next time `Verify()` walks it.
-2. **Signed exports.** Every CSV / NDJSON download from `/v1/events.{ndjson,csv}` carries a chain-proof trailer (head hash, export timestamp, seq range). The trailer binds the file to a specific point in chain history.
-3. **Continuous trust signal.** The UI's *integrity verified* badge polls `/v1/verify` every 60s. It goes red when broken.
+1. **Tamper detection.** Modifying any record breaks the chain the next time `Verify()` walks it.
+2. **Signed exports.** Every CSV / NDJSON download from `/v1/events.{ndjson,csv}` carries a chain-proof trailer (head hash, export timestamp, seq range) that binds the file to a specific point in chain history.
+3. **Continuous trust signal.** The UI's *integrity verified* badge polls `/v1/verify` every 60s and goes red when broken.
 
-Retention rotation drops records older than the configured window. A sidecar `<log>.genesis` file preserves chain integrity after rotation by recording the prev-hash of the first surviving record. `Verify()` uses that value as the chain-start anchor.
+Retention rotation drops records older than the configured window. A sidecar `<log>.genesis` file preserves chain integrity across rotation by recording the prev-hash of the first surviving record, which `Verify()` uses as the chain-start anchor.
 
 ---
 
 ## Wire formats
 
-Hopframe tries to be format-agnostic at the edges so it works with whatever the deployment uses:
+Hopframe tries to be format-agnostic at the edges:
 
 - **HTTP MCP.** POST JSON-RPC over HTTP request/response.
-- **stdio MCP.** Newline-delimited JSON-RPC on stdin/stdout. The sensor *is* a stdio MCP server from the client's point of view, with the upstream as its child process.
-- **Streamable HTTP / SSE.** When upstream returns `Content-Type: text/event-stream`, the proxy switches to chunk-forwarding mode. Each `data:` event is parsed and run through the pipeline. Poisoned chunks are replaced with a `hopframe-blocked` event in-stream.
+- **stdio MCP.** Newline-delimited JSON-RPC on stdin/stdout. The sensor *is* a stdio MCP server from the client's point of view.
+- **Streamable HTTP / SSE.** When upstream returns `Content-Type: text/event-stream`, the proxy switches to chunk-forwarding: each `data:` event runs through the pipeline, and poisoned chunks are replaced in-stream with a `hopframe-blocked` event.
 - **A2A v1.** POST task envelopes plus `GET /.well-known/agent.json` for card discovery and signature verification.
 - **JSON-RPC batching.** `mcp.ParseBatch` handles top-level arrays of envelopes; detection applies per element.
 
@@ -110,7 +110,7 @@ Hopframe tries to be format-agnostic at the edges so it works with whatever the 
 
 ## Configuration
 
-YAML at the file boundary, env vars override at runtime. See `internal/config/config.go`:
+YAML sits at the file boundary; env vars override at runtime. See `internal/config/config.go`:
 
 - `sensor`: id, tenant
 - `upstream`: URL and timeout (HTTP shape)
@@ -137,19 +137,19 @@ Sensor-side env vars: `HOPFRAME_API_TOKEN` (bearer to the control plane), `HOPFR
 
 ## Why this shape
 
-A few decisions worth documenting:
+Five decisions shaped the design:
 
-- **Inline mesh.** We sit on the wire because attacks happen at runtime. A static scanner can identify what a tool description *might* do. Only an inline mesh can stop what it *is* doing.
+- **Inline mesh.** We sit on the wire because attacks happen at runtime. A static scanner identifies what a tool description *might* do; an inline mesh stops what it *is* doing.
 - **Cross-protocol from day one.** Everyone else supports one protocol. Confused-deputy and capability-laundering attacks live on the cross-protocol surface.
-- **Open content registry.** The rule packs are YAML, live in the repo, and accept contributions by PR. Cloudflare WAF rules, OWASP, and ClamAV all demonstrate that open detection content creates a stronger long-term moat than closed content.
+- **Open content registry.** The rule packs are YAML, live in the repo, and accept contributions by PR. Operators can inspect, fork, and extend the detection content without waiting for a product release.
 - **Cryptographic accountability.** A hash-chained log plus signed exports turns Hopframe into an evidence-grade tool for compliance-grade buyers.
-- **Layered detection at cost-aware speeds.** Regex runs first (5µs), the classifier runs second (30µs), the optional LLM judge follows (500ms), and behavioral detection runs centrally (continuous). Most competitors run a single layer at the wrong cost.
+- **Layered detection at cost-aware speeds.** The pipeline table above lists the layers and their measured latencies. Cheap stages handle clear cases before optional expensive stages run.
 
 ---
 
 ## Where this is going
 
-This document describes the v0.1 alpha shape. The three pillars (editable policy plane, enterprise control plane, cryptographic audit-grade evidence) are all in-tree. The remaining work is mostly operational. The file-backed audit log moves to a Postgres-backed HA control plane while preserving hash-chain semantics. That work is Phase 2C in [roadmap.md](roadmap.md). It moves the product from "alpha that runs on a laptop" to "regulated buyer can run this in production at scale." Other roadmap items include long-term archival to object storage, cryptographic per-tenant scoping (separate signing keys per tenant), and a SOC 2 Type II audit trail for the hosted offering.
+This is the v0.1 alpha shape. The three pillars (editable policy plane, enterprise control plane, cryptographic audit-grade evidence) are in-tree; the remaining work is mostly operational. Phase 2C in [roadmap.md](roadmap.md) moves the file-backed audit log to a Postgres-backed HA control plane, preserving hash-chain semantics, so a regulated buyer can run the product in production at scale. Other roadmap items include long-term archival to object storage, cryptographic per-tenant scoping (separate signing keys per tenant), and a SOC 2 Type II audit trail for the hosted offering.
 
 ## Where to look in code
 

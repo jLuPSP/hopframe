@@ -1,6 +1,6 @@
 # Developer guide
 
-This guide is for contributors working on Hopframe itself. If you only want to use it, start with [Quickstart](quickstart.md).
+This guide is for contributors working on Hopframe itself. Users should start with [Quickstart](quickstart.md).
 
 ## Repo layout
 
@@ -72,7 +72,7 @@ Python SDK tests:
 cd sdk/python && python3 -m pytest tests/ -q
 ```
 
-The repo policy: `gofmt -l .` returns nothing, `go test -race -count=1 ./...` passes, `staticcheck ./...` is clean, and there are zero em-dashes anywhere in `*.md` or `*.go` files (the codepoint U+2014). Use periods, commas, parentheses, or colons instead.
+The repo policy: `gofmt -l .` returns nothing, `go test -race -count=1 ./...` passes, `staticcheck ./...` is clean, and `*.md` and `*.go` files contain zero em-dashes (codepoint U+2014). Use periods, commas, parentheses, or colons instead.
 
 ## Run the local stack
 
@@ -89,13 +89,13 @@ make stop                                       # kill all hopframe processes
 
 ## Architecture in one paragraph
 
-A sensor (`internal/proxy`, `internal/a2aproxy`, `internal/stdioproxy`) sits inline on protocol traffic and forwards it to an upstream. Before forwarding, the sensor runs the detection pipeline (`internal/pipeline`). The pipeline composes detectors from `pkg/detect` (heuristic classifier, optional LLM judge), the rule pack (`pkg/ruleset`), the cross-protocol taint tracker (`pkg/taint`), and the tool-quarantine set (`internal/quarantine`). The pipeline produces a verdict. The policy resolver (`pkg/policy`) picks a final mode (monitor / warn / block) based on which policies match the event scope. Findings flow to the control plane (`control-plane/api`). It writes them to a SHA-256 hash-chained log (`control-plane/store`) and broadcasts them to live UI subscribers via SSE. Operators use the embedded UI (`control-plane/api/*.html`) or the CLI (`cmd/hopframe`). Both use the same `/v1/*` API.
+A sensor (`internal/proxy`, `internal/a2aproxy`, `internal/stdioproxy`) sits inline on protocol traffic and runs the detection pipeline (`internal/pipeline`) before forwarding to an upstream. The pipeline composes detectors from `pkg/detect` (heuristic classifier, optional LLM judge), the rule pack (`pkg/ruleset`), the cross-protocol taint tracker (`pkg/taint`), and the tool-quarantine set (`internal/quarantine`). The policy resolver (`pkg/policy`) turns the pipeline's verdict into a final mode (monitor / warn / block) based on which policies match the event scope. Findings flow to the control plane (`control-plane/api`), which writes them to a SHA-256 hash-chained log (`control-plane/store`) and broadcasts them to live UI subscribers via SSE. Operators use the embedded UI (`control-plane/api/*.html`) or the CLI (`cmd/hopframe`), both over the same `/v1/*` API.
 
 Full diagram: [Architecture](architecture.md).
 
 ## Adding a detection rule
 
-Detection rules are the fastest contribution. They live in `content/<category>/*.yaml`:
+Detection rules are the fastest contribution. They live at `content/<category>/*.yaml`:
 
 ```yaml
 - id: pi.contrib.your_rule_id
@@ -113,7 +113,7 @@ Add a benchmark sample at `bench/corpus/v1.jsonl`:
 {"id":"pi-099","category":"prompt-injection","label":"malicious","text":"<the attack string>"}
 ```
 
-Then run `make bench-corpus` to verify that the rule fires on the sample without breaking precision.
+Run `make bench-corpus` to verify the rule fires on the sample without breaking precision.
 
 Format constraints:
 
@@ -134,13 +134,13 @@ See [CONTRIBUTING.md](https://github.com/jLuPSP/hopframe/blob/main/CONTRIBUTING.
 
 ## Adding a control-plane resource
 
-If you are adding something CRUDable (like users, tokens, or policies), the existing files are the templates:
+For a CRUDable resource (users, tokens, policies), the existing files are the templates:
 
 - `control-plane/api/policies.go` and `control-plane/store/policystore.go`: JSON-file-backed resource with a listener that writes mutations to the audit chain.
 - `control-plane/api/users.go` and `users_api.go`: bcrypt-hashed accounts, sessions, CRUD.
 - `control-plane/api/tokens.go`: first-class API tokens with hash-only persistence.
 
-The pattern uses a thread-safe in-memory store, atomic JSON file writes, an optional listener for audit-chain emission, and HTTP handlers that wrap the store.
+The pattern uses a thread-safe in-memory store, atomic JSON file writes, an optional listener for audit-chain emission, and HTTP handlers wrapping the store.
 
 ## Wire schema
 
@@ -150,20 +150,19 @@ The event envelope is at `pkg/event/event.go`. Three implementations agree on th
 - Python: `sdk/python/hopframe/client.py`
 - TypeScript: `sdk/typescript/src/types.ts`
 
-Bump `event.SchemaVersion` only on breaking changes. Additive fields are fine without a bump.
+Bump `event.SchemaVersion` only on breaking changes; additive fields need no bump.
 
 ## Releasing
 
-Releases are gated on `workflow_dispatch` against `.github/workflows/release.yaml`. Follow this flow:
+Real releases run when a `v*` tag is pushed:
 
-1. Update [CHANGELOG.md](https://github.com/jLuPSP/hopframe/blob/main/CHANGELOG.md) with the unreleased changes promoted to a new version section.
+1. Update [CHANGELOG.md](https://github.com/jLuPSP/hopframe/blob/main/CHANGELOG.md) and keep SDK/chart versions in sync.
 2. Tag the commit (`git tag v0.x.0`).
 3. Push the tag.
-4. Trigger the release workflow manually with `dry_run=false`.
 
 Goreleaser cross-compiles every binary for linux/darwin/windows on amd64/arm64. It generates SBOMs via syft and signs the checksums with cosign keyless via the GitHub OIDC token.
 
-For a snapshot build (no publish), trigger with `dry_run=true`.
+For a snapshot build that publishes nothing, run the workflow manually with `dry_run=true`.
 
 ## Common debugging commands
 
