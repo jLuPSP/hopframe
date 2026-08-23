@@ -52,7 +52,7 @@ export function wrapAISDKTool<T extends AISDKTool>(tool: T, opts: WrapAISDKToolO
             result: typeof result === "object" && result !== null ? (result as Record<string, unknown>) : { value: result as unknown },
           },
           latency_micros: (Date.now() - start) * 1000,
-        } as Parameters<Hopframe["emit"]>[0]);
+        });
         return result;
       } catch (err) {
         opts.hopframe.emit({

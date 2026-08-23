@@ -49,6 +49,10 @@ func waitForEvents(s *captureSink, n int, timeout time.Duration) []*event.Event 
 }
 
 func newServer(t *testing.T, failOpen bool) (*Server, *captureSink, func()) {
+	return newServerWithLimit(t, failOpen, 0)
+}
+
+func newServerWithLimit(t *testing.T, failOpen bool, bodyMax int64) (*Server, *captureSink, func()) {
 	t.Helper()
 	rs, err := ruleset.LoadDir("../../content")
 	if err != nil {
@@ -61,7 +65,7 @@ func newServer(t *testing.T, failOpen bool) (*Server, *captureSink, func()) {
 		Detectors:    []detect.Detector{rs},
 		ModeResolver: rs.HighestMode,
 	}
-	srv, err := New(Options{Pipeline: pipe, Emitter: em, FailOpen: failOpen})
+	srv, err := New(Options{Pipeline: pipe, Emitter: em, FailOpen: failOpen, BodyMaxBytes: bodyMax})
 	if err != nil {
 		t.Fatalf("new extauthz: %v", err)
 	}
@@ -160,6 +164,41 @@ func TestExtAuthzMalformedFailOpen(t *testing.T) {
 	rec := post(srv, []byte(`{not json`), nil)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("malformed fail-open status = %d, want 200", rec.Code)
+	}
+}
+
+func TestExtAuthzMalformedAuditMatchesDecision(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		failOpen bool
+		want     event.Action
+	}{
+		{name: "fail closed", failOpen: false, want: event.ActionBlock},
+		{name: "fail open", failOpen: true, want: event.ActionAllow},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			srv, cap, cleanup := newServer(t, tc.failOpen)
+			defer cleanup()
+			_ = post(srv, []byte(`{not json`), nil)
+			events := waitForEvents(cap, 1, time.Second)
+			if len(events) == 0 || events[0].Action != tc.want {
+				t.Fatalf("malformed audit action = %+v, want %s", events, tc.want)
+			}
+		})
+	}
+}
+
+func TestExtAuthzDeniesOversizedBodyEvenWhenFailOpen(t *testing.T) {
+	srv, cap, cleanup := newServerWithLimit(t, true, 32)
+	defer cleanup()
+	body := []byte(`{"jsonrpc":"2.0","id":1,"method":"tools/call"}`)
+	rec := post(srv, body, nil)
+	if rec.Code != http.StatusForbidden {
+		t.Fatalf("oversized status = %d, want 403", rec.Code)
+	}
+	events := waitForEvents(cap, 1, time.Second)
+	if len(events) == 0 || events[0].Action != event.ActionBlock {
+		t.Fatalf("expected an oversized-body block event, got %+v", events)
 	}
 }
 

@@ -83,9 +83,8 @@ export class Hopframe {
     if (this.timer) return;
     this.timer = setInterval(() => this.flushAsync(), this.opts.flushIntervalMs);
     // Don't keep the Node process alive solely for the flush timer.
-    if (typeof (this.timer as NodeJS.Timeout).unref === "function") {
-      (this.timer as NodeJS.Timeout).unref();
-    }
+    const timer = this.timer as ReturnType<typeof setInterval> & { unref?: () => void };
+    timer.unref?.();
   }
 
   private flushAsync(): void {

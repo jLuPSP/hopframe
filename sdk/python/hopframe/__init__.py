@@ -48,4 +48,4 @@ __all__ = [
     "reset_run_id",
     "RUN_ID_HEADER",
 ]
-__version__ = "0.1.0"
+__version__ = "0.2.0"

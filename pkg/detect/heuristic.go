@@ -10,9 +10,9 @@ import (
 
 // HeuristicClassifier is Layer 2 of the detection pipeline: a small,
 // dependency-free, feature-density scorer for prompt-injection-shaped
-// content. It is deliberately not an ML model, but unlike the
-// regex pack, it generalizes across paraphrase by counting *features*
-// rather than matching specific phrases.
+// content. It is deliberately not an ML model. It generalizes across
+// paraphrase by counting *features*, where the regex pack matches
+// specific phrases.
 //
 // Features (each contributes to a [0,1] score, summed and normalized):
 //

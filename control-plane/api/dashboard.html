@@ -43,7 +43,10 @@
   section { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; }
   .grid { display: grid; gap: 14px; }
   .stat-row { grid-template-columns: repeat(6, 1fr); margin-bottom: 14px; }
-  @media (max-width: 980px) { .stat-row { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 980px) {
+    header.topbar { height: auto; min-height: 44px; flex-wrap: wrap; gap: 8px; padding-block: 8px; }
+    .stat-row { grid-template-columns: repeat(3, 1fr); }
+  }
   .charts-row { grid-template-columns: 2fr 1fr; margin-bottom: 14px; }
   @media (max-width: 980px) { .charts-row { grid-template-columns: 1fr; } }
   .lists-row { grid-template-columns: 1fr 1fr; margin-bottom: 14px; }

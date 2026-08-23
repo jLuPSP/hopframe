@@ -91,6 +91,33 @@ jobs:
         working-directory: sdk/python
         run: python -m pytest -q tests/
 
+  typescript-sdk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: install
+        working-directory: sdk/typescript
+        run: npm install
+
+      - name: typecheck and build
+        working-directory: sdk/typescript
+        run: |
+          npm run lint
+          npm run build
+
+      - name: test
+        working-directory: sdk/typescript
+        run: npm test
+
+      - name: inspect package contents
+        working-directory: sdk/typescript
+        run: npm pack --dry-run
+
   bench:
     runs-on: ubuntu-latest
     steps:

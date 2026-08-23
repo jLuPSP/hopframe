@@ -60,6 +60,7 @@ export interface NewEventOptions {
   findings?: Finding[];
   action?: Action;
   severity?: Severity;
+  latency_micros?: number;
 }
 
 const HEX = "0123456789abcdef";
@@ -98,5 +99,6 @@ export function newEvent(sensorID: string, opts: NewEventOptions = {}): Hopframe
     findings: opts.findings ?? [],
     action: opts.action ?? "allow",
     severity: opts.severity ?? "info",
+    ...(opts.latency_micros === undefined ? {} : { latency_micros: opts.latency_micros }),
   };
 }

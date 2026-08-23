@@ -67,8 +67,9 @@ type Options struct {
 	// policy scoping and as the audit event's destination. Falls back to the
 	// request Host header when empty.
 	DestLabel string
-	// BodyMaxBytes caps how much of the forwarded request body is read and
-	// parsed. Zero uses a 1 MiB default.
+	// BodyMaxBytes caps the forwarded request body. Oversized bodies are
+	// denied because the gateway would otherwise forward bytes we did not inspect.
+	// Zero uses a 1 MiB default.
 	BodyMaxBytes int64
 }
 
@@ -112,18 +113,27 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		agentRunID = newAgentRunID()
 	}
 
-	body, err := io.ReadAll(io.LimitReader(r.Body, s.bodyMax))
+	defer r.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(r.Body, s.bodyMax+1))
 	if err != nil {
 		s.onError(w, agentRunID)
 		return
 	}
-	defer r.Body.Close()
+	if int64(len(body)) > s.bodyMax {
+		s.emitMalformed(r, body[:s.bodyMax], errors.New("MCP request body exceeds inspection limit"), agentRunID, event.ActionBlock)
+		s.deny(w, nil, agentRunID, "blocked by hopframe: mcp request body exceeds inspection limit", "envelope.body_too_large")
+		return
+	}
 
 	env, err := mcp.Parse(body)
 	if err != nil {
 		// A malformed envelope is itself a signal: record it, then honor
 		// the fail-open / fail-closed policy.
-		s.emitMalformed(r, body, err, agentRunID)
+		action := event.ActionBlock
+		if s.opts.FailOpen {
+			action = event.ActionAllow
+		}
+		s.emitMalformed(r, body, err, agentRunID, action)
 		if s.opts.FailOpen {
 			s.allow(w, agentRunID)
 			return
@@ -231,7 +241,7 @@ func topFindingID(findings []event.Finding) string {
 	return ""
 }
 
-func (s *Server) emitMalformed(r *http.Request, body []byte, parseErr error, agentRunID string) {
+func (s *Server) emitMalformed(r *http.Request, body []byte, parseErr error, agentRunID string, action event.Action) {
 	ev := event.New(s.opts.Pipeline.SensorID, event.ProtocolMCP, event.DirectionInbound)
 	ev.EventID = "ev-malformed-" + time.Now().UTC().Format("150405.000000")
 	ev.TenantID = s.opts.Pipeline.TenantID
@@ -240,7 +250,7 @@ func (s *Server) emitMalformed(r *http.Request, body []byte, parseErr error, age
 	ev.Destination = s.dest(r)
 	ev.Message = event.Message{Raw: string(body)}
 	ev.Severity = event.SeverityLow
-	ev.Action = event.ActionAllow
+	ev.Action = action
 	ev.Findings = []event.Finding{{
 		RuleID:      "envelope.malformed",
 		Category:    "policy",
