@@ -191,3 +191,27 @@
 
 /* Center the hero tagline & cta */
 .hopframe-hero p:not(:has(img)) { max-width: 62ch; margin-left: auto; margin-right: auto; }
+/* ---- Version pill in the header ---- */
+.hf-version-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-right: 0.4rem;
+  padding: 0.22rem 0.6rem;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 999px;
+  font-family: var(--md-code-font-family, monospace);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--md-default-fg-color--light);
+  background: var(--md-default-bg-color--lightest);
+}
+.hf-version-pill .hf-version {
+  color: var(--md-primary-fg-color);
+  font-weight: 700;
+}
+@media (max-width: 44rem) {
+  .hf-version-pill { display: none; }
+}

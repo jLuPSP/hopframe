@@ -19,9 +19,6 @@
     <circle cx="90" cy="62" r="3" fill="#b8732e"/>
   </g>
 
-  <text x="40" y="48"  class="mono" font-size="13" fill="#5a554c" letter-spacing="2.4" style="text-transform:uppercase">0.2.0</text>
-  <text x="40" y="612" class="mono" font-size="13" fill="#5a554c" letter-spacing="2.4" style="text-transform:uppercase">BSL 1.1</text>
-
   <!-- right panel -->
   <text x="560" y="140" class="mono"  font-size="13"  fill="#b8732e" letter-spacing="3" style="text-transform:uppercase">SECURITY MESH FOR AGENT TRAFFIC</text>
   <text x="560" y="246" class="serif" font-size="100" font-weight="400" fill="#f6f1ea" letter-spacing="-3">hopframe</text>
