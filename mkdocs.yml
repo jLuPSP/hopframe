@@ -90,7 +90,8 @@ plugins:
   - search
 
 nav:
-  - Home: index.md
+  - How it works: how-it-works.md
+  - Deploy: index.md
 
 extra:
   generator: false

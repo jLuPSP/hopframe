@@ -12,7 +12,8 @@
 
 <p align="center">
   <a href="https://jlupsp.github.io/hopframe/">Docs</a> &middot;
-  <a href="docs/index.md">Deploy two ways</a> &middot;
+  <a href="docs/how-it-works.md">How it works</a> &middot;
+  <a href="docs/index.md">Deploy</a> &middot;
   <a href="https://github.com/jLuPSP/hopframe/issues/new">Report a bug</a>
 </p>
 
